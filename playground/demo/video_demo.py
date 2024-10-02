@@ -42,11 +42,48 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
 
+    default_prompt = """You are tasked with predicting scene graph triplets based on the given video and using predefined lists of Subjects, Objects, and Predicates. Each triplet must follow the structure [Subject-#id:Object-#id:Predicate] and should be unique without repeatations, where #id is a uniqe id for each subject or object throughout the video.
+
+    Instructions:
+    Use only the provided lists for Subjects, Objects, and Predicates.
+    Identify relationships between the subjects and objects in the scene, and list triplets using the specified format.
+    
+    Ensure that each triplet follows the pattern [Subject-#id:Object-#id:Predicate] where:
+
+    Subject: Represents the subject (from the "Subjects" list) performing the action.
+    Object: Represents the object (from the "Objects" list) that the action is performed on or related to.
+    Predicate: Describes the action or relationship between the subject and object.
+    #id: is a uniqe id for each subject or object throughout the video, if there are two adults in the video then the ids should be assigned as adult-0 and adult-1 and so on throughout the video.
+
+    Example 1: Given
+    Video: If video scene shows man and child is sitting on a sofa, and man is holding the water bottle. and if there is a table in the scene.
+    Subjects: man, child, women
+    Objects: bottle, table, sofa, toy
+    Predicates: holding, sitting on, standing, front of
+    Triplets: [man-1:sofa-2:on];[man-1:bottle-5:holding];[child-3:sofa-2:on];[table-4:man-1:front of];
+              
+
+    Example 2: Given
+    Video: If video scene shows, dog chasing cat and cat chasing mouse. 
+    Subjects: dog, cat, mouse, person
+    Objects: dog, cat, mouse, perons, table
+    Predicates: chasing, behind, front of, standing next to
+    Triplets: [dog-1:cat-2:chasing];[dog-1:cat-2:behind];[cat-2:dog-1:front of];[cat-2:mouse-3:chasing];[mouse-3:cat-2:front of];[dog-1:dog-5:standing next to]
+    
+
+    Now for the provided video given:
+    Subjects: cattle
+    Objects: cattle, mountain, river, trees.
+    Predicates: stand front, stand next to, stand behind, walk next to, walk front, stand next to, stand front, walk next to,walk behind.
+    Triplets: 
+    """
+
+    default_prompt = "How many cows are there in this video?"
     # Define the command-line arguments
     parser.add_argument("--video_path", help="Path to the video files.", required=True)
     parser.add_argument("--output_dir", help="Directory to save the model results JSON.", required=True)
     parser.add_argument("--output_name", help="Name of the file for storing results JSON.", required=True)
-    parser.add_argument("--model-path", type=str, default="facebook/opt-350m")
+    parser.add_argument("--model-path", type=str, default="lmms-lab/llava-onevision-qwen2-7b-ov")
     parser.add_argument("--model-base", type=str, default=None)
     parser.add_argument("--conv-mode", type=str, default=None)
     parser.add_argument("--chunk-idx", type=int, default=0)
@@ -58,12 +95,12 @@ def parse_args():
     parser.add_argument("--image_grid_pinpoints", type=str, default="[(224, 448), (224, 672), (224, 896), (448, 448), (448, 224), (672, 224), (896, 224)]")
     parser.add_argument("--mm_patch_merge_type", type=str, default="spatial_unpad")
     parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == 'true'), default=True)
-    parser.add_argument("--for_get_frames_num", type=int, default=4)
+    parser.add_argument("--for_get_frames_num", type=int, default=8)
     parser.add_argument("--load_8bit",  type=lambda x: (str(x).lower() == 'true'), default=False)
-    parser.add_argument("--prompt", type=str, default=None) 
+    parser.add_argument("--prompt", type=str, default=default_prompt) 
     parser.add_argument("--api_key", type=str, help="OpenAI API key")
     parser.add_argument("--mm_newline_position", type=str, default="no_token")
-    parser.add_argument("--force_sample", type=lambda x: (str(x).lower() == 'true'), default=False)
+    parser.add_argument("--force_sample", type=lambda x: (str(x).lower() == 'true'), default=True)
     parser.add_argument("--add_time_instruction", type=str, default=False)
     return parser.parse_args()
 
@@ -75,11 +112,13 @@ def load_video(video_path,args):
     video_time = total_frame_num / vr.get_avg_fps()
     fps = round(vr.get_avg_fps())
     frame_idx = [i for i in range(0, len(vr), fps)]
+    frame_idx = [0,1,2,3,4,5,6,7]
     frame_time = [i/fps for i in frame_idx]
     if len(frame_idx) > args.for_get_frames_num or args.force_sample:
         sample_fps = args.for_get_frames_num
         uniform_sampled_frames = np.linspace(0, total_frame_num - 1, sample_fps, dtype=int)
         frame_idx = uniform_sampled_frames.tolist()
+        
         frame_time = [i/vr.get_avg_fps() for i in frame_idx]
     frame_time = ",".join([f"{i:.2f}s" for i in frame_time])
     spare_frames = vr.get_batch(frame_idx).asnumpy()
@@ -305,6 +344,8 @@ def run_inference(args):
         
         print(f"Question: {prompt}\n")
         print(f"Response: {outputs}\n")
+        print(f"video shape", print(video[0].shape))
+        print(f"time insrcut", args.add_time_instruction) # defined by model, if model doesnt suppport, this argument is overriden to False
 
         if "gpt4v" == args.model_path:
             if system_error == 'content_policy_violation':
