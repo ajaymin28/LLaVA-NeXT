@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Set up the data folder
-IMAGE_FOLDER="XXX"
-VIDEO_FOLDER="XXX"
-DATA_YAML="XXX" # e.g exp.yaml
+IMAGE_FOLDER="/root/jbhoi/gits/VRDFormer_VRD/data/vidvrd/videos"
+VIDEO_FOLDER="/root/jbhoi/gits/VRDFormer_VRD/data/vidvrd/videos"
+DATA_YAML="/root/jbhoi/gits/LLaVA-NeXT/scripts/video/train/exp.yaml" # e.g exp.yaml
 
 ############### Prepare Envs #################
 python3 -m pip install flash-attn --no-build-isolation
@@ -25,8 +25,9 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
-MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-ov_to_video_am9"
-PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-ov-si"
+MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-ov_to_video_am9_vrd_v5_3"
+#PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-ov-si"  
+PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-si" 
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
@@ -70,13 +71,13 @@ deepspeed --master_port 30000 \
     --tf32 True \
     --model_max_length 32768 \
     --gradient_checkpointing True \
-    --dataloader_num_workers 2 \
+    --dataloader_num_workers 1 \
     --lazy_preprocess True \
     --report_to wandb \
     --torch_compile True \
     --torch_compile_backend "inductor" \
     --dataloader_drop_last True \
-    --frames_upbound 64 \
+    --frames_upbound 8 \
     --mm_newline_position grid \
     --add_time_instruction True \
     --force_sample True \

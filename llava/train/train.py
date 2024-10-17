@@ -1191,7 +1191,9 @@ class LazySupervisedDataset(Dataset):
                         except IOError:
                             print(f"Failed to read frame at path: {frame_path}")
                 else:
-                    video, video_time, frame_time, num_frames_to_sample = process_video_with_decord(video_file, self.data_args)
+                    # JAIMIN: 
+                    frame_indices = self.list_data_dict[i]["frame_indices"]
+                    video, video_time, frame_time, num_frames_to_sample = process_video_with_decord(video_file, self.data_args,frame_indices_custom=frame_indices)
 
                 processor = self.data_args.image_processor
                 image = processor.preprocess(video, return_tensors="pt")["pixel_values"]
