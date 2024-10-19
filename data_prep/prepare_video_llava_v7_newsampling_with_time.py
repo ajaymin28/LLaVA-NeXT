@@ -27,8 +27,8 @@ import argparse
 import threading
 import time
 import copy
-from myutils.utilities import getConvBlock, getPromptTemplate, getRandomPrompt, get_frame_range_for_annotations
-from myutils.utilities import SGSpecialTokens, getboundingBoxOftheObject, unnormbb_vidvrd
+from utils.utilities import getConvBlock, getPromptTemplate, getRandomPrompt, get_frame_range_for_annotations
+from utils.utilities import SGSpecialTokens, getboundingBoxOftheObject, unnormbb_vidvrd
 import cv2
 # from utils.utilities import getFramesForObject, create_batch_frames
 

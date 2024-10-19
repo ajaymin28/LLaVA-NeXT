@@ -7,77 +7,9 @@ import re
 import threading
 import time
 import copy
-# from utils.utilities import create_batch_frames
+from utils.utilities import prompts_list
 import argparse
 import time
-
-
-prompts_list = {
-    
-    "summary": ["Describe the video in detail",
-                "What is happening in the video?",
-                "What is the central narrative or story in the video?",
-                "What is the purpose or goal of the video?",
-                "What are the key takeaways or lessons from the video?"
-                ],
-
-    "identify_subject_objects": [
-                        "List the objects present in the video",
-                        "What objects, items, or elements appear prominently?", 
-                        "Identify any significant objects in the video.",
-                        "What objects are visible in the video?",
-                        "List the main objects featured in the video.",
-                        "what are the main objects featured in the video?"
-                        ],
-    "identify_predicates": [
-                            "List the actions, movements or placements of the objects in the scene.",
-                            "Describe any interactions between people or objects in the video.",
-                            "Describe any significant gestures or interactions between objects in the scene",
-                            "How subjects and objects relates to each other in the video?",
-                            "How do the objects interact with their environment in the video?",
-                            "Describe any notable physical interactions between objects in the video.",
-                            "Describe any interactions that highlight the relationships between objects.",
-                            "What actions or events take place in the video?",
-                          ],
-    "SGG": [
-       "Generate frame-by-frame scene graph for the provided video",
-       "Provide frame-by-frame Scene graph triplets in the form of [Subject-id:Predicate:Object-id]",
-       "Generate scene graph for the provided video",
-       "Provide scene graph for the provided video",
-       "Identify subjects, predicates and objects frame-by-frame in the provided video"
-    ],
-
-    "SGG_image": [
-       "Generate scene graph for the provided image",
-       "Provide Scene graph triplets in the form of [Subject-id:Predicate:Object-id] for the provided image",
-       "Generate scene graph for the provided image",
-       "Provide scene graph for the provided image",
-       "Identify subjects, predicates and objects in the provided image"
-    ],
-
-    "SGG_with_bb": [
-       "Generate frame-by-frame scene graph for the provided video along with bounding box of each objects",
-       "Provide frame-by-frame Scene graph triplets in the form of [Subject-id-[min_x,min_y,max_x,max_y]:Predicate:Object-id-[min_x,min_y,max_x,max_y]]",
-       "Generate scene graph for the provided video along with bounding box of each objects",
-       "Provide scene graph for the provided video with bounding box location of each objects",
-       "Identify Subjects, Predicates and Objects frame-by-frame in the provided video, also provide bounding box location of each subject and object"
-    ],
-
-    "sg_localization": [
-      #  "Provide bounding box location of [{sub}:{rel}:{obj}] in frame {frame_idx} of the provided video" # {} to be replaced by actual value
-      "Provide bounding box location of [{sub}:{rel}:{obj}]" # {} to be replaced by actual value
-    ],
-
-    "sg_localization_image": [
-      "Provide bounding box location of [{sub}:{rel}:{obj}]" # {} to be replaced by actual value
-    ]
-
-
-}
-
-
-# import matplotlib.pyplot as plt
-# import cv2
 from PIL import Image
 import numpy as np
 

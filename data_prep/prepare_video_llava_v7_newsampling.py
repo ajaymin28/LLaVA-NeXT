@@ -24,258 +24,222 @@ import argparse
 import threading
 import time
 import copy
-from myutils.utilities import getConvBlock, getPromptTemplate, getRandomPrompt, get_frame_range_for_annotations
-from myutils.utilities import SGSpecialTokens, getboundingBoxOftheObject, unnormbb_vidvrd
+from utils.utilities import getConvBlock, getPromptTemplate, getRandomPrompt, get_frame_range_for_annotations
+from utils.utilities import SGSpecialTokens, getboundingBoxOftheObject, unnormbb_vidvrd,get_varying_list, get_bb_subj_obj
+from utils.utilities import addObjectsRelations_bb_instructions, getObjectsRelations
 import cv2
-# from utils.utilities import getFramesForObject, create_batch_frames
-
-
-# import matplotlib.pyplot as plt
-# import cv2
-# from PIL import Image
-# import numpy as np
-
-def get_varying_list(current_block_list, full_list, fix_size=100):
-	"""
-	1. take current list (shuffle it)
-	2. add elements to current list from full list without repeatation that sums to fix_size (shuffle it again)
-	3. return the list
-	"""
-	current_block_list = set(copy.deepcopy(current_block_list))
-	full_list = set(copy.deepcopy(full_list))
-
-	newelements = full_list.difference(current_block_list)
-
-	current_block_list = list(current_block_list)
-	newelements =  list(newelements)
-	newElementsNeeded = 0
-	currentElementsSize = len(current_block_list) 
-	if currentElementsSize>fix_size:
-		## more items than predefined limit
-		newElementsNeeded = 0
-		pass
-	else:
-		newElementsNeeded = fix_size - len(current_block_list) 
-
-	if len(newelements)<newElementsNeeded:
-		current_block_list = current_block_list + random.sample(newelements,k=len(newelements))
-	else:
-		current_block_list = current_block_list + random.sample(newelements,k=newElementsNeeded)
-
-	random.shuffle(current_block_list)
-	return current_block_list
 
 
 
-def addObjectsRelations_bb_instructions(video_path,vid_data,total_frames, subjobj_rel_frames_data,frame_indices,bb_per_object):
-  obj_rel_bb_prompts = []
-  vid_objects = vid_data["objects"] # {'object_id': 2, 'category': 'countertop', 'is_thing': True, 'status': []},
-  vid_objects_by_id = {data_dict['object_id']: data_dict for data_dict in vid_objects} # for relations
+# def addObjectsRelations_bb_instructions(video_path,vid_data,total_frames, subjobj_rel_frames_data,frame_indices,bb_per_object):
+#   obj_rel_bb_prompts = []
+#   vid_objects = vid_data["objects"] # {'object_id': 2, 'category': 'countertop', 'is_thing': True, 'status': []},
+#   vid_objects_by_id = {data_dict['object_id']: data_dict for data_dict in vid_objects} # for relations
 
-  #  vid_rels = vid_data["relations"]
-  #  vid_id = vid_data["video_id"]
+#   #  vid_rels = vid_data["relations"]
+#   #  vid_id = vid_data["video_id"]
   
-  for frame_list_idx, frame_idx in enumerate(frame_indices):
-    data = subjobj_rel_frames_data[frame_idx]
-    subj_obj_rel = data["subj_obj_rel"]
-    subj_obj_bb = data["subj_obj_bb"]
+#   for frame_list_idx, frame_idx in enumerate(frame_indices):
+#     data = subjobj_rel_frames_data[frame_idx]
+#     subj_obj_rel = data["subj_obj_rel"]
+#     subj_obj_bb = data["subj_obj_bb"]
 
-    add_video_token= True
+#     add_video_token= True
 
-    PromptAnswer = getPromptTemplate(media_path=video_path, media_type="video")
+#     PromptAnswer = getPromptTemplate(media_path=video_path, media_type="video")
 
-    for rel_idx, relation in enumerate(subj_obj_rel):
-      sub = relation[0]
-      obj = relation[1]
-      rel = relation[2]
-      # frames = relation[3].copy()
+#     for rel_idx, relation in enumerate(subj_obj_rel):
+#       sub = relation[0]
+#       obj = relation[1]
+#       rel = relation[2]
+#       # frames = relation[3].copy()
 
-      sub_bb, obj_bb = subj_obj_bb[rel_idx]
-      if sum(sub_bb)==0 or sum(obj_bb)==0:
-         continue
+#       sub_bb, obj_bb = subj_obj_bb[rel_idx]
+#       if sum(sub_bb)==0 or sum(obj_bb)==0:
+#          continue
 
-      subject_category_name = vid_objects_by_id[sub]['category']
-      object_category_name = vid_objects_by_id[obj]['category']
+#       subject_category_name = vid_objects_by_id[sub]['category']
+#       object_category_name = vid_objects_by_id[obj]['category']
 
-      if subject_category_name not in bb_per_object.keys():
-         bb_per_object[subject_category_name] = 0
+#       if subject_category_name not in bb_per_object.keys():
+#          bb_per_object[subject_category_name] = 0
 
-      if object_category_name not in bb_per_object.keys():
-         bb_per_object[object_category_name] = 0
+#       if object_category_name not in bb_per_object.keys():
+#          bb_per_object[object_category_name] = 0
         
-      if bb_per_object[subject_category_name]<100 or bb_per_object[object_category_name]<100:
-        convQ = getConvBlock(value=getRandomPrompt(key='sg_localization', static=True), 
-                            conv_type="human", media_type="<video>", 
-                            add_media_token=add_video_token)
-        if add_video_token:
-          add_video_token = False
+#       if bb_per_object[subject_category_name]<100 or bb_per_object[object_category_name]<100:
+#         convQ = getConvBlock(value=getRandomPrompt(key='sg_localization', static=True), 
+#                             conv_type="human", media_type="<video>", 
+#                             add_media_token=add_video_token)
+#         if add_video_token:
+#           add_video_token = False
 
-        curr_frame_idx = frame_indices.index(frame_idx)
+#         curr_frame_idx = frame_indices.index(frame_idx)
 
-        # "Provide bounding box location of [{sub}:{rel}:{obj}] in frame {frame_idx} of the provided video" # {} to be replaced by actual value
-        convQ["value"] = convQ["value"].replace("{sub}", f"{SGSpecialTokens.SG_SUBJECT}'{subject_category_name}-{SGSpecialTokens.SG_SUBJECT_ID}{sub}'")
-        convQ["value"] = convQ["value"].replace("{rel}", f"{SGSpecialTokens.SG_PREDICATE}'{rel}'")
-        convQ["value"] = convQ["value"].replace("{obj}", f"{SGSpecialTokens.SG_OBJECT}'{object_category_name}-{SGSpecialTokens.SG_OBJECT_ID}{obj}'")
-        convQ["value"] = convQ["value"].replace("{frame_idx}", str(curr_frame_idx))
+#         # "Provide bounding box location of [{sub}:{rel}:{obj}] in frame {frame_idx} of the provided video" # {} to be replaced by actual value
+#         convQ["value"] = convQ["value"].replace("{sub}", f"{SGSpecialTokens.SG_SUBJECT}'{subject_category_name}-{SGSpecialTokens.SG_SUBJECT_ID}{sub}'")
+#         convQ["value"] = convQ["value"].replace("{rel}", f"{SGSpecialTokens.SG_PREDICATE}'{rel}'")
+#         convQ["value"] = convQ["value"].replace("{obj}", f"{SGSpecialTokens.SG_OBJECT}'{object_category_name}-{SGSpecialTokens.SG_OBJECT_ID}{obj}'")
+#         convQ["value"] = convQ["value"].replace("{frame_idx}", str(curr_frame_idx))
 
-        resp = ""
-        for fi in range(len(frame_indices)):
-          if fi==curr_frame_idx:
-             resp += f"{SGSpecialTokens.VIDEO_FRAME_ID}[{SGSpecialTokens.SG_SUBJECT}'{subject_category_name}-{SGSpecialTokens.SG_SUBJECT_ID}{sub}'_{SGSpecialTokens.SG_BB_START}{sub_bb}{SGSpecialTokens.SG_BB_END}:{SGSpecialTokens.SG_PREDICATE}'{rel}':{SGSpecialTokens.SG_OBJECT}'{object_category_name}-{SGSpecialTokens.SG_OBJECT_ID}{obj}'_{SGSpecialTokens.SG_BB_START}{obj_bb}{SGSpecialTokens.SG_BB_END}]];{SGSpecialTokens.SG_END}"
-          else:
-             resp += f"{SGSpecialTokens.VIDEO_FRAME_ID}{SGSpecialTokens.SG_END}"
-        # resp = {f"Frame {frame_list_idx}": resp}
+#         resp = ""
+#         for fi in range(len(frame_indices)):
+#           if fi==curr_frame_idx:
+#              resp += f"{SGSpecialTokens.VIDEO_FRAME_ID}[{SGSpecialTokens.SG_SUBJECT}'{subject_category_name}-{SGSpecialTokens.SG_SUBJECT_ID}{sub}'_{SGSpecialTokens.SG_BB_START}{sub_bb}{SGSpecialTokens.SG_BB_END}:{SGSpecialTokens.SG_PREDICATE}'{rel}':{SGSpecialTokens.SG_OBJECT}'{object_category_name}-{SGSpecialTokens.SG_OBJECT_ID}{obj}'_{SGSpecialTokens.SG_BB_START}{obj_bb}{SGSpecialTokens.SG_BB_END}]];{SGSpecialTokens.SG_END}"
+#           else:
+#              resp += f"{SGSpecialTokens.VIDEO_FRAME_ID}{SGSpecialTokens.SG_END}"
+#         # resp = {f"Frame {frame_list_idx}": resp}
 
-        convA = getConvBlock(value=str(resp), 
-                          conv_type="gpt", media_type="<video>", 
-                          add_media_token=False)
+#         convA = getConvBlock(value=str(resp), 
+#                           conv_type="gpt", media_type="<video>", 
+#                           add_media_token=False)
         
-        PromptAnswer["conversations"].append(convQ)
-        PromptAnswer["conversations"].append(convA)
+#         PromptAnswer["conversations"].append(convQ)
+#         PromptAnswer["conversations"].append(convA)
 
-        bb_per_object[object_category_name] +=1
-        bb_per_object[subject_category_name] +=1
+#         bb_per_object[object_category_name] +=1
+#         bb_per_object[subject_category_name] +=1
 
 
-      if len(PromptAnswer["conversations"])>6:
-         break
+#       if len(PromptAnswer["conversations"])>6:
+#          break
     
-    PromptAnswer["frame_indices"] =  frame_indices
-    PromptAnswer["total_frames"] = total_frames
+#     PromptAnswer["frame_indices"] =  frame_indices
+#     PromptAnswer["total_frames"] = total_frames
 
-    if len(PromptAnswer["conversations"])>=2:
-       obj_rel_bb_prompts.append(PromptAnswer)
-
-
-  return obj_rel_bb_prompts, bb_per_object
+#     if len(PromptAnswer["conversations"])>=2:
+#        obj_rel_bb_prompts.append(PromptAnswer)
 
 
-def getObjectsRelations(vid_rels, vid_data, norm_frames=True, add_frames=True, uniform_sampling_idx=8):
-
-    AnswerString = ""
-    AnswerString_with_bb = ""
-    SubObjRel = []
-    frame_indices = []
-    # mask_size = None
-
-    total_frames = vid_data["meta"]["num_frames"]
-
-    vid_objects = vid_data["objects"] # {'object_id': 2, 'category': 'countertop', 'is_thing': True, 'status': []},
-    vid_objects_by_id = {data_dict['object_id']: data_dict for data_dict in vid_objects} # for relations
-    vid_rels = vid_data["relations"]
-    vid_id = vid_data["video_id"]
+#   return obj_rel_bb_prompts, bb_per_object
 
 
-    min_frame_idx, max_frame_idx, frames_for_obj = get_frame_range_for_annotations(vid_objects, vid_data) # drop frames with no annotations
-    frames_where_subjobj_rel_is_present = {}
+# def getObjectsRelations(vid_rels, vid_data, norm_frames=True, add_frames=True, uniform_sampling_idx=8):
 
-    for frame_idx in range(min_frame_idx, max_frame_idx+1):
-      if frame_idx>total_frames:
-         continue
+#     AnswerString = ""
+#     AnswerString_with_bb = ""
+#     SubObjRel = []
+#     frame_indices = []
+#     # mask_size = None
+
+#     total_frames = vid_data["meta"]["num_frames"]
+
+#     vid_objects = vid_data["objects"] # {'object_id': 2, 'category': 'countertop', 'is_thing': True, 'status': []},
+#     vid_objects_by_id = {data_dict['object_id']: data_dict for data_dict in vid_objects} # for relations
+#     vid_rels = vid_data["relations"]
+#     vid_id = vid_data["video_id"]
+
+
+#     min_frame_idx, max_frame_idx, frames_for_obj = get_frame_range_for_annotations(vid_objects, vid_data) # drop frames with no annotations
+#     frames_where_subjobj_rel_is_present = {}
+
+#     for frame_idx in range(min_frame_idx, max_frame_idx+1):
+#       if frame_idx>total_frames:
+#          continue
       
-      if frame_idx not in frames_where_subjobj_rel_is_present.keys():
-         frames_where_subjobj_rel_is_present[frame_idx] = {
-            "subj_obj_rel": [],
-            "subj_obj_bb": [],
-            "annot_cnt": 0
-         }
+#       if frame_idx not in frames_where_subjobj_rel_is_present.keys():
+#          frames_where_subjobj_rel_is_present[frame_idx] = {
+#             "subj_obj_rel": [],
+#             "subj_obj_bb": [],
+#             "annot_cnt": 0
+#          }
 
-      for idx, vid_r in enumerate(vid_rels):
-        sub = vid_r[0]
-        obj = vid_r[1]
-        rel = vid_r[2]
-        frames = vid_r[3].copy()
-        frame_start, frame_end = frames[0][0], frames[0][1]
-        for frame_range in frames:
-          frame_start, frame_end = frame_range
+#       for idx, vid_r in enumerate(vid_rels):
+#         sub = vid_r[0]
+#         obj = vid_r[1]
+#         rel = vid_r[2]
+#         frames = vid_r[3].copy()
+#         frame_start, frame_end = frames[0][0], frames[0][1]
+#         for frame_range in frames:
+#           frame_start, frame_end = frame_range
           
-          if frame_start>total_frames:
-            continue
-          if frame_end>total_frames:
-            continue
+#           if frame_start>total_frames:
+#             continue
+#           if frame_end>total_frames:
+#             continue
 
-          # if frame_start>=frame_idx and frame_idx<=frame_end: # FIXED CONDITION
-          if frame_idx>=frame_start and frame_idx<=frame_end:
-            sub_bb, obj_bb, mask_size = get_bb_subj_obj(data_root=data_root,vid_id=vid_id,frame_idx=frame_idx,subject_id=sub,object_id=obj)
+#           # if frame_start>=frame_idx and frame_idx<=frame_end: # FIXED CONDITION
+#           if frame_idx>=frame_start and frame_idx<=frame_end:
+#             sub_bb, obj_bb, mask_size = get_bb_subj_obj(data_root=data_root,vid_id=vid_id,frame_idx=frame_idx,subject_id=sub,object_id=obj)
 
-            if sum(sub_bb)>0 and sum(obj_bb)>0:
-              # selected_frame = frame_for_bb_idx
-              # break
-              frames_where_subjobj_rel_is_present[frame_idx]["subj_obj_rel"].append(vid_r)
-              frames_where_subjobj_rel_is_present[frame_idx]["subj_obj_bb"].append([sub_bb, obj_bb])
-              frames_where_subjobj_rel_is_present[frame_idx]["annot_cnt"] +=1
+#             if sum(sub_bb)>0 and sum(obj_bb)>0:
+#               # selected_frame = frame_for_bb_idx
+#               # break
+#               frames_where_subjobj_rel_is_present[frame_idx]["subj_obj_rel"].append(vid_r)
+#               frames_where_subjobj_rel_is_present[frame_idx]["subj_obj_bb"].append([sub_bb, obj_bb])
+#               frames_where_subjobj_rel_is_present[frame_idx]["annot_cnt"] +=1
 
 
-    overall_annotations = []
+#     overall_annotations = []
     
-    frame_counter = 0
-    # annotation_total_frame_count = len(frames_where_subjobj_rel_is_present.keys())
-    # remaining_frames_after_batching = annotation_total_frame_count%uniform_sampling_idx
-    # frames_needs_to_be_added = uniform_sampling_idx - remaining_frames_after_batching
-    frame_indices = []
+#     frame_counter = 0
+#     # annotation_total_frame_count = len(frames_where_subjobj_rel_is_present.keys())
+#     # remaining_frames_after_batching = annotation_total_frame_count%uniform_sampling_idx
+#     # frames_needs_to_be_added = uniform_sampling_idx - remaining_frames_after_batching
+#     frame_indices = []
 
-    tripletes_for_current_block = ""
-    for key_frame_idx, frame_data in frames_where_subjobj_rel_is_present.items():
+#     tripletes_for_current_block = ""
+#     for key_frame_idx, frame_data in frames_where_subjobj_rel_is_present.items():
        
-      subj_obj_rel = frame_data["subj_obj_rel"]
-      subj_obj_bb = frame_data["subj_obj_bb"]
+#       subj_obj_rel = frame_data["subj_obj_rel"]
+#       subj_obj_bb = frame_data["subj_obj_bb"]
 
-      tripletes_for_current_block += f"{SGSpecialTokens.VIDEO_FRAME_ID}"
+#       tripletes_for_current_block += f"{SGSpecialTokens.VIDEO_FRAME_ID}"
 
-      # rel_added = []
-      for idx, vid_r in enumerate(subj_obj_rel):
-        sub = vid_r[0]
-        obj = vid_r[1]
-        rel = vid_r[2]
-        # frames = vid_r[3].copy()
-        sub_bb, obj_bb = subj_obj_bb[idx]
+#       # rel_added = []
+#       for idx, vid_r in enumerate(subj_obj_rel):
+#         sub = vid_r[0]
+#         obj = vid_r[1]
+#         rel = vid_r[2]
+#         # frames = vid_r[3].copy()
+#         sub_bb, obj_bb = subj_obj_bb[idx]
 
-        if sum(sub_bb)>0 and sum(obj_bb)>0:
+#         if sum(sub_bb)>0 and sum(obj_bb)>0:
 
-          sub_category = vid_objects_by_id[sub]['category']
-          obj_category = vid_objects_by_id[obj]['category']
+#           sub_category = vid_objects_by_id[sub]['category']
+#           obj_category = vid_objects_by_id[obj]['category']
 
-          tripletes_for_current_block += f"[{SGSpecialTokens.SG_SUBJECT}'{sub_category}-{SGSpecialTokens.SG_SUBJECT_ID}{sub}'"
-          tripletes_for_current_block += f":{SGSpecialTokens.SG_PREDICATE}'{rel}'"
-          tripletes_for_current_block += f":{SGSpecialTokens.SG_OBJECT}'{obj_category}-{SGSpecialTokens.SG_OBJECT_ID}{obj}'"
-          tripletes_for_current_block += f"];"
+#           tripletes_for_current_block += f"[{SGSpecialTokens.SG_SUBJECT}'{sub_category}-{SGSpecialTokens.SG_SUBJECT_ID}{sub}'"
+#           tripletes_for_current_block += f":{SGSpecialTokens.SG_PREDICATE}'{rel}'"
+#           tripletes_for_current_block += f":{SGSpecialTokens.SG_OBJECT}'{obj_category}-{SGSpecialTokens.SG_OBJECT_ID}{obj}'"
+#           tripletes_for_current_block += f"];"
 
-      frame_indices.append(key_frame_idx)
-      frame_counter +=1
+#       frame_indices.append(key_frame_idx)
+#       frame_counter +=1
 
-      if len(frame_indices)>=8:
+#       if len(frame_indices)>=8:
         
-        overall_annotations.append({
-            "frame_idxes": frame_indices,
-            "frames_sgs": tripletes_for_current_block+f"{SGSpecialTokens.SG_END}"
-        })
+#         overall_annotations.append({
+#             "frame_idxes": frame_indices,
+#             "frames_sgs": tripletes_for_current_block+f"{SGSpecialTokens.SG_END}"
+#         })
 
-        tripletes_for_current_block = ""
-        frame_counter = 0
-        frame_indices = []
+#         tripletes_for_current_block = ""
+#         frame_counter = 0
+#         frame_indices = []
 
-    # TODO add remaining annotations for last block
+#     # TODO add remaining annotations for last block
 
-    return overall_annotations,AnswerString,AnswerString_with_bb, frame_indices, frames_where_subjobj_rel_is_present
+#     return overall_annotations,AnswerString,AnswerString_with_bb, frame_indices, frames_where_subjobj_rel_is_present
 
-def validate_annotations(annot):
-	videopath = annot["video"]
-	frame_indices = annot["frame_indices"]
-	frames_with_error = []
-	capture = cv2.VideoCapture(videopath)
-	for frame_idx in frame_indices:    
-		try:
-			capture.set(cv2.CAP_PROP_POS_FRAMES,frame_idx)
-			ret, frame = capture.read()
-			if not ret:
-				frames_with_error.append(frame_idx)
-		except Exception as e:
-				frames_with_error.append(frame_idx)
+# def validate_annotations(annot):
+# 	videopath = annot["video"]
+# 	frame_indices = annot["frame_indices"]
+# 	frames_with_error = []
+# 	capture = cv2.VideoCapture(videopath)
+# 	for frame_idx in frame_indices:    
+# 		try:
+# 			capture.set(cv2.CAP_PROP_POS_FRAMES,frame_idx)
+# 			ret, frame = capture.read()
+# 			if not ret:
+# 				frames_with_error.append(frame_idx)
+# 		except Exception as e:
+# 				frames_with_error.append(frame_idx)
 	
-	capture.release()
-	if len(frames_with_error)>0:
-			print(f"error in indexes for {videopath} frames: {frames_with_error}")      
-	return frames_with_error
+# 	capture.release()
+# 	if len(frames_with_error)>0:
+# 			print(f"error in indexes for {videopath} frames: {frames_with_error}")      
+# 	return frames_with_error
 
 def get_frame_by_frame_annot(frame_count, rels, sub_ob_jects_by_id, trajectories):
 	frames_dict = {}
@@ -354,7 +318,7 @@ def get_frame_samples(total_frames,every_nth=4,frame_window_size=32,shift_step=3
 
 
 
-def prepare_vid_sg_threaded(data_root,subset, annotations,
+def prepare_vid_sg(data_root,subset, annotations,
 							norm_bb=True, dataset="vidor", 
 							uniform_sampling_idx=8, 
 							dataset_meta=None,
@@ -590,79 +554,79 @@ def prepare_vid_sg_threaded(data_root,subset, annotations,
 		# break
    
 
-def get_bb_subj_obj(data_root,vid_id,frame_idx,subject_id,object_id):
-  sub_bb, obj_bb, mask_size = [], [], None
-  try:
-    sub_bb, mask_size = getboundingBoxOftheObject(data_root=data_root,vid_id=vid_id,frame_id=frame_idx, object_id=subject_id)
-  except FileNotFoundError:
-    #print(f"[Warning] Frame {frame_for_bb_idx} not found for vidor {vid_data['video_id']}")
-    pass
+# def get_bb_subj_obj(data_root,vid_id,frame_idx,subject_id,object_id):
+#   sub_bb, obj_bb, mask_size = [], [], None
+#   try:
+#     sub_bb, mask_size = getboundingBoxOftheObject(data_root=data_root,vid_id=vid_id,frame_id=frame_idx, object_id=subject_id)
+#   except FileNotFoundError:
+#     #print(f"[Warning] Frame {frame_for_bb_idx} not found for vidor {vid_data['video_id']}")
+#     pass
   
-  try:
-    obj_bb, mask_size = getboundingBoxOftheObject(data_root=data_root,vid_id=vid_id,frame_id=frame_idx, object_id=object_id)
-  except FileNotFoundError:
-    #print(f"[Warning] Frame {frame_for_bb_idx} not found for vidor {vid_data['video_id']}")
-    pass
+#   try:
+#     obj_bb, mask_size = getboundingBoxOftheObject(data_root=data_root,vid_id=vid_id,frame_id=frame_idx, object_id=object_id)
+#   except FileNotFoundError:
+#     #print(f"[Warning] Frame {frame_for_bb_idx} not found for vidor {vid_data['video_id']}")
+#     pass
 
-  return sub_bb, obj_bb, mask_size
+#   return sub_bb, obj_bb, mask_size
 
 
-def getVideoCaptions(vid_data, correct_object_ids=False):
-    vid_objects = vid_data["objects"] # {'object_id': 2, 'category': 'countertop', 'is_thing': True, 'status': []},
-    # vid_objects_by_id = {data_dict['object_id']: data_dict for data_dict in vid_objects} # for relations
-    vid_rels = vid_data["relations"]
-    object_id_pattern_in_descr = r"\((\d+)\)"
-    AnswerString = ""
-    vid_caps = vid_data['captions']
-    for idx, vid_c in enumerate(vid_caps):
-        if correct_object_ids:
-           """
-           Converts adult (1)  ==> adult.1
-           """
-           vid_description = re.sub(object_id_pattern_in_descr, r".\1", vid_c["description"])
-           vid_description = vid_description.replace(" .",".")
-        else:
-           vid_description = vid_c["description"]
+# def getVideoCaptions(vid_data, correct_object_ids=False):
+#     # vid_objects = vid_data["objects"] # {'object_id': 2, 'category': 'countertop', 'is_thing': True, 'status': []},
+#     # vid_objects_by_id = {data_dict['object_id']: data_dict for data_dict in vid_objects} # for relations
+#     vid_rels = vid_data["relations"]
+#     object_id_pattern_in_descr = r"\((\d+)\)"
+#     AnswerString = ""
+#     vid_caps = vid_data['captions']
+#     for idx, vid_c in enumerate(vid_caps):
+#         if correct_object_ids:
+#            """
+#            Converts adult (1)  ==> adult.1
+#            """
+#            vid_description = re.sub(object_id_pattern_in_descr, r".\1", vid_c["description"])
+#            vid_description = vid_description.replace(" .",".")
+#         else:
+#            vid_description = vid_c["description"]
            
-        AnswerString += vid_description
-        if idx!=len(vid_rels)-1:
-            AnswerString +=","
-    return AnswerString
+#         AnswerString += vid_description
+#         if idx!=len(vid_rels)-1:
+#             AnswerString +=","
+#     return AnswerString
 
-def getVideoQandAPairs(vid_data, correct_object_ids=False):
-    QnAPairs = []
-    vid_qna = vid_data['qa_pairs']
-    for idx, vid_qna in enumerate(vid_qna):
-        # time_point = vid_qna["time"]
-        Question = vid_qna["question"]
-        Answer = vid_qna["answer"]
+# def getVideoQandAPairs(vid_data, correct_object_ids=False):
+#     QnAPairs = []
+#     vid_qna = vid_data['qa_pairs']
+#     for idx, vid_qna in enumerate(vid_qna):
+#         # time_point = vid_qna["time"]
+#         Question = vid_qna["question"]
+#         Answer = vid_qna["answer"]
 
-        if correct_object_ids:
-           object_id_pattern_in_descr = r"\((\d+)\)"
-           Question = re.sub(object_id_pattern_in_descr, r".\1", Question).replace(" .", ".")
-           Answer = re.sub(object_id_pattern_in_descr, r".\1", Answer).replace(" .", ".")
-
-
-        QnASeq = [{
-          "from": "human",
-          "value": f"<video>\n{Question}"
-        },
-        {
-          "from": "gpt",
-          "value": Answer
-        }]
-        QnAPairs.append(QnASeq)
-
-    return QnAPairs
-
-def getVideoSummary(vid_data):
-    AnswerString = vid_data['summary']
-    return AnswerString
+#         if correct_object_ids:
+#            object_id_pattern_in_descr = r"\((\d+)\)"
+#            Question = re.sub(object_id_pattern_in_descr, r".\1", Question).replace(" .", ".")
+#            Answer = re.sub(object_id_pattern_in_descr, r".\1", Answer).replace(" .", ".")
 
 
-def chunk_list(list_, chunk_n):
-    chunk_n = max(1, chunk_n)
-    return (list_[i:i+chunk_n] for i in range(0, len(list_), chunk_n))
+#         QnASeq = [{
+#           "from": "human",
+#           "value": f"<video>\n{Question}"
+#         },
+#         {
+#           "from": "gpt",
+#           "value": Answer
+#         }]
+#         QnAPairs.append(QnASeq)
+
+#     return QnAPairs
+
+# def getVideoSummary(vid_data):
+#     AnswerString = vid_data['summary']
+#     return AnswerString
+
+
+# def chunk_list(list_, chunk_n):
+#     chunk_n = max(1, chunk_n)
+#     return (list_[i:i+chunk_n] for i in range(0, len(list_), chunk_n))
 
 if __name__=="__main__":	
 		
@@ -844,7 +808,7 @@ if __name__=="__main__":
 				pbar.refresh()
 
 
-				prepare_vid_sg_threaded(data_root=imagenet_vidvrd_root,
+				prepare_vid_sg(data_root=imagenet_vidvrd_root,
 							subset=subset,
 							annotations=anno_files,norm_bb=True,dataset=dataset,
 							# uniform_sampling_idx=8,
