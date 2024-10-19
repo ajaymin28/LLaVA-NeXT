@@ -1,3 +1,7 @@
+## Data prep for pvsg
+Refer to [Data Prep Readme](./data_prep/README.md)
+
+
 ## Videos are put here: /groups/sernam/datasets/VidVRD/data/vidvrd/videos
 
 ### To run video llava one vision cli Q&A:

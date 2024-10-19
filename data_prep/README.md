@@ -6,7 +6,7 @@ Alternatively data can be downloaded from huggingface (wget is easier from HF)
 
 - https://huggingface.co/datasets/Jingkang/PVSG
 - https://huggingface.co/datasets/shangxd/imagenet-vidvrd
-
+- https://huggingface.co/datasets/shangxd/vidor
 
 ## Preparing Q&A annotations for video-llava
 
