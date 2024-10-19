@@ -1,106 +1,40 @@
 import os
 import json
 import glob
-# import matplotlib.pyplot as plt
-# from PIL import Image, ImageDraw
 import numpy as np
 import time
-from utils.utilities import create_batch_frames, eval_tagging_scores
+from utils.utilities import eval_tagging_scores
 from utils.utilities import pre_clean_prediction_data_v18
 from utils.utilities import calculate_accuracy_varying_lengths, remove_ids
-from myutils.utilities import getRandomPrompt, SGSpecialTokens
-
-from tqdm import tqdm
+from utils.utilities import getRandomPrompt, SGSpecialTokens
+from data_prep.vidvrd2dataset import VidVRD, VidOR
 
 import argparse
 import os
 import copy
-
 import torch
 
 from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from llava.conversation import conv_templates, SeparatorStyle
 from llava.model.builder import load_pretrained_model
-from llava.utils import disable_torch_init
-from llava.mm_utils import process_anyres_image,tokenizer_image_token, get_model_name_from_path, KeywordsStoppingCriteria
+from llava.mm_utils import tokenizer_image_token, get_model_name_from_path, KeywordsStoppingCriteria
 
-import json
-import os
 import math
 from tqdm import tqdm
 from decord import VideoReader, cpu
-
 from transformers import AutoConfig
 
 import cv2
 import base64
-# import openai
 import pickle
-# from PIL import Image
-
+import json
 from json import encoder
 encoder.FLOAT_REPR = lambda o: format(o, '.2f')
-
-# from videollava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN, DEFAULT_VIDEO_TOKEN
-# from videollava.conversation import conv_templates, SeparatorStyle
-# from videollava.model.builder import load_pretrained_model
-# from videollava.serve.utils import load_image, image_ext, video_ext
-# from videollava.utils import disable_torch_init
-# from videollava.mm_utils import process_images, tokenizer_image_token, get_model_name_from_path, KeywordsStoppingCriteria
-# from videollava.constants import SGSpecialTokens
-
-from PIL import Image
-
-import requests
-from PIL import Image
-from io import BytesIO
-from transformers import TextStreamer
-import numpy as np
-import cv2
 import random
-
 from typing import Dict
-import transformers
-
-from vidvrd2dataset import VidVRD, VidOR
+from utils.utilities import get_varying_list
 
 
-def get_varying_list(current_block_list, full_list, fix_size=100):
-	"""
-	1. take current list (shuffle it)
-	2. add elements to current list from full list without repeatation that sums to fix_size (shuffle it again)
-	3. return the list
-	"""
-	current_block_list = set(copy.deepcopy(current_block_list))
-	full_list = set(copy.deepcopy(full_list))
-
-	newelements = full_list.difference(current_block_list)
-
-	current_block_list = list(current_block_list)
-	newelements =  list(newelements)
-	newElementsNeeded = 0
-	currentElementsSize = len(current_block_list) 
-	if currentElementsSize>fix_size:
-		## more items than predefined limit
-		newElementsNeeded = 0
-		pass
-	else:
-		newElementsNeeded = fix_size - len(current_block_list) 
-
-	if len(newelements)<newElementsNeeded:
-		current_block_list = current_block_list + random.sample(newelements,k=len(newelements))
-	else:
-		current_block_list = current_block_list + random.sample(newelements,k=newElementsNeeded)
-
-	random.shuffle(current_block_list)
-	return current_block_list
-
-def get_default_indices(video_path, frames_to_add=8):
-    total_frames = getVideoFrameCount(video_path=video_path)
-    if total_frames is not None:
-        return np.linspace(0, total_frames-1, frames_to_add, dtype=int)
-    else:
-        return np.array([i for i in range(frames_to_add)])
 
 
 def set_video(args, video_frame_index=[0,1,2,3,4,5,6,7]):
@@ -139,12 +73,6 @@ def handle_custom_commands(inp):
         actions["exit_loop"] = True
         print("exiting...")
     return actions
-    
-def getVideoFrameCount(video_path):
-    cv2_vr = cv2.VideoCapture(video_path)
-    total_frames = int(cv2_vr.get(cv2.CAP_PROP_FRAME_COUNT))
-    cv2_vr.release()
-    return total_frames
 
 def load_video_base64(path):
     video = cv2.VideoCapture(path)
@@ -413,14 +341,13 @@ if __name__=="__main__":
     }
 
     # TODO SET PATHS here for propts
-    exec(open("/home/jbhol/dso/gits/Video-LLaVA/picklePrompt.py").read())
-    defaultPrompt = "None"
-    with open('/home/jbhol/dso/gits/Video-LLaVA/prompts.pkl', 'rb') as handle:
-        b = pickle.load(handle)
-        defaultPrompt = b["version_14_vidvrd"]
+    # exec(open("/home/jbhol/dso/gits/Video-LLaVA/picklePrompt.py").read())
+    # defaultPrompt = "None"
+    # with open('/home/jbhol/dso/gits/Video-LLaVA/prompts.pkl', 'rb') as handle:
+    #     b = pickle.load(handle)
+    #     defaultPrompt = b["version_13_sam"]
 
-
-    print(defaultPrompt)
+    # print(defaultPrompt)
     # exit()
 
     dataset_name = "vidvrd"
@@ -448,8 +375,8 @@ if __name__=="__main__":
         filename = filename.split(".")[0]
         val_ids.append(filename)
 
-    for val_id_idx, val_id in enumerate(val_ids):
-        annot = dataset.get_anno(vid=val_id)
+    for val_id_idx, video_id in enumerate(val_ids):
+        annot = dataset.get_anno(vid=video_id)
         frame_h, frame_w = annot["height"], annot["width"]
         frame_count = annot["frame_count"]
         video_id = annot["video_id"]
@@ -495,9 +422,9 @@ if __name__=="__main__":
         "triplet": {"precision": [], "recall": []} 
     }
 
-    for val_id_idx, val_id in enumerate(val_ids):
+    for val_id_idx, video_id in enumerate(val_ids):
 
-        annot = dataset.get_anno(vid=val_id)
+        annot = dataset.get_anno(vid=video_id)
 
         frame_h, frame_w = annot["height"], annot["width"]
         frame_count = annot["frame_count"]
@@ -700,35 +627,33 @@ if __name__=="__main__":
             TripletQ = TripletQ.replace("{predicates}", ",".join(final_predicates_list))
 
 
-            if val_id not in llava_response_json:
-                llava_response_json[val_id] = {}
-                llava_raw_response_json[val_id] = {}
+            if video_id not in llava_response_json:
+                llava_response_json[video_id] = {}
+                llava_raw_response_json[video_id] = {}
 
-            if frame_block_index not in llava_response_json[val_id].keys():
-                llava_response_json[val_id][frame_block_index] = {}
-                llava_raw_response_json[val_id][frame_block_index] = {}
+            if frame_block_index not in llava_response_json[video_id].keys():
+                llava_response_json[video_id][frame_block_index] = {}
+                llava_raw_response_json[video_id][frame_block_index] = {}
 
 
             
-            file = os.path.join(videos_root, video_id+".mp4")
-            file = file if isinstance(file, list) else [file]
+            video_path = os.path.join(videos_root, video_id+".mp4")
+            file = video_path if isinstance(video_path, list) else [video_path]
             args.video_path = video_path
             set_video(args=args, video_frame_index=Block_frame_ids)
             outputs_unclean = get_model_output(prompt=TripletQ,file=file,batch_of_frames=Block_frame_ids)
             outputs = pre_clean_prediction_data_v18(outputs_unclean["triplets"])
 
-            # print(outputs_unclean, Block_GT_Triplets)
 
-            # print(file, outputs)
 
-            llava_response_json[val_id][frame_block_index] = {
+            llava_response_json[video_id][frame_block_index] = {
                 # "objects_list": outputs["objects_list"],
                 "triplets": outputs,
                 "frames": Block_frame_ids,
                 "GT_triplets": Block_GT_Triplets
             }
 
-            llava_raw_response_json[val_id][frame_block_index] = {
+            llava_raw_response_json[video_id][frame_block_index] = {
                 "frames": Block_frame_ids,
                 "GT_triplets": Block_GT_Triplets,
                 "raw": outputs_unclean["triplets"],
@@ -791,6 +716,9 @@ if __name__=="__main__":
                             PredData["objects"].append(fpred_o)
 
                 for fm_key, fmdata in frame_metric.items():
+                    """
+                    Eval score for each frame
+                    """
                     prec, rec, hit_scores = eval_tagging_scores(gt_relations=gt_all[fm_key],pred_relations=pred_all[fm_key],min_pred_num=1)
                     frame_metric[fm_key]["precision"].append(prec)
                     frame_metric[fm_key]["recall"].append(rec)
@@ -800,7 +728,7 @@ if __name__=="__main__":
                     try:
                         results = calculate_accuracy_varying_lengths(gt_triplets=GT_tripdata,pred_triplets=frame_pred_triplets, remove_duplicates=False)
                     except Exception as e:
-                        print(f"error calculating score for vid {val_id} block:{frame_block_index} fidx {fidx} actual_fidx: {Block_frame_ids[fidx]}")
+                        print(f"error calculating score for vid {video_id} block:{frame_block_index} fidx {fidx} actual_fidx: {Block_frame_ids[fidx]}")
 
                     if results is not None:
                         sg_eval_counts["correct_pred_triplets_cnt"] +=  results["correct_triplet_cnt"]
@@ -814,16 +742,22 @@ if __name__=="__main__":
                         sg_eval_counts["total_pred_cnt"] +=  results["total_predicates"] 
                 else:
                     pass
-                    # print(f"vid {val_id} block:{frame_block_index} fidx {fidx} actual_fidx:{Block_frame_ids[fidx]} lengt: {len(GT_tripdata)} lenpred: {frame_pred_triplets} outputs: {outputs}, unclean: {outputs_unclean}")
+                    # print(f"vid {video_id} block:{frame_block_index} fidx {fidx} actual_fidx:{Block_frame_ids[fidx]} lengt: {len(GT_tripdata)} lenpred: {frame_pred_triplets} outputs: {outputs}, unclean: {outputs_unclean}")
 
 
             for bm_key, bmdata in block_metric.items():
+                """
+                    average eval score for each frame and appned it to block
+                """
                 if len(frame_metric[bm_key]["precision"])>0 and len(frame_metric[bm_key]["recall"])>0:
                     block_metric[bm_key]["precision"].append(np.average(np.array(frame_metric[bm_key]["precision"], dtype=np.float32)))
                     block_metric[bm_key]["recall"].append(np.average(np.array(frame_metric[bm_key]["recall"], dtype=np.float32)))
         
         
         for oam_key, oamdata in overall_metric.items():
+            """
+                    average eval score for each block and appned it to overall
+            """
             if len(block_metric[oam_key]["precision"])>0 and len(block_metric[oam_key]["recall"])>0:
                 overall_metric[oam_key]["precision"].append(np.average(np.array(block_metric[oam_key]["precision"], dtype=np.float32)))
                 overall_metric[oam_key]["recall"].append(np.average(np.array(block_metric[oam_key]["recall"], dtype=np.float32)))
