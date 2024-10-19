@@ -1,4 +1,4 @@
-## Data prep for pvsg
+## Data prep for pvsg and vidvrd
 Refer to [Data Prep Readme](./data_prep/README.md)
 
 
