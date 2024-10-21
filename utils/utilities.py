@@ -6,6 +6,10 @@ import re
 import copy
 import cv2
 
+def chunk_list(list_, chunk_n):
+    chunk_n = max(1, chunk_n)
+    return (list_[i:i+chunk_n] for i in range(0, len(list_), chunk_n))
+
 def get_varying_list(current_block_list, full_list, fix_size=100):
 	"""
 	1. take current list (shuffle it)
