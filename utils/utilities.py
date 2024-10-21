@@ -700,6 +700,81 @@ def pre_clean_prediction_data_onevision_v14_vrd(model_response, fileData=None, r
 
     return block_triplets
 
+
+
+def pre_clean_temporal_triplets(model_response, fileData=None, remove_entity_idx=False):
+    ##[red panda-0:lie next to:red panda-1]_[Frame-0:Frame-7];[red panda-0:lie left:red panda-1]_[Frame-0:Frame-7];[red panda-1:lie right:red panda-0]_[Frame-0:Frame-7];[red panda-1:lie next to:red panda-0]_[Frame-0:Frame-7];[red panda-0:lie next to:red panda-2]_[Frame-0:Frame-7];[red panda-0:lie left:red panda-2]_[Frame-0:Frame-7];[red panda-2:sit right:red panda-0]_[Frame-0:Frame-7];[red panda-2:sit next to:red panda-0]_[Frame-0:Frame-7];[red panda-2:taller:red panda-0]_[Frame-0:Frame-7];[red panda-1:lie next to:red panda-2]_[Frame-0:Frame-7];[red panda-1:lie left:red panda-2]_[Frame-0:Frame-7];[red panda-2:sit right:red panda-1]_[Frame-0:Frame-7];[red panda-2:sit next to:red panda-1]_[Frame-0:Frame-7];[red panda-2:taller:red panda-1]_[Frame-0:Frame-7];
+    block_triplets = {
+        "triplets": [[] for i in range(8)],
+        "scene": [],
+        "description": [],
+        "objects": []
+    }
+
+    prediction_data = model_response
+    prediction_data = prediction_data.strip("</s>").lower()
+
+    try:
+        triplets_list = prediction_data.split(";")
+        for triplet_data in triplets_list:
+            #[red panda-0:lie next to:red panda-1]_[Frame-0:Frame-7]
+            triplet_data = triplet_data.replace(":", ",")
+            splitTemporal = triplet_data.split("_")
+            if len(splitTemporal)!=2:
+                print(f"invalid entity length {splitTemporal}")
+                continue
+            
+            triplet_data, temporal = splitTemporal
+
+            triplet_data = triplet_data.replace("[","")
+            triplet_data = triplet_data.replace("]","")
+            triplet_data = triplet_data.split(",")
+            if len(triplet_data)!=3:
+                print(f"invalid triplet: {triplet_data}")
+                continue
+
+            subj, pred, obj = triplet_data
+            triplet = [subj, pred, obj]
+
+            
+            if "[" in temporal and "]" in temporal:
+                temporal_list = temporal_list.replace("Frame-", "")
+                temporal_list = eval(temporal)
+
+                if len(temporal_list)==1:
+                    # only one frame 
+                    temporal_entity_index = temporal_list[0]
+                    if type(temporal_entity_index)!=int:
+                        temporal_entity_index = int(temporal_entity_index)
+                        block_triplets["triplets"][temporal_entity_index].append(triplet)
+                elif len(temporal_list)==2:
+                    temporal_entity_start_index,temporal_entity_end_index = temporal_list
+                    if type(temporal_entity_start_index)!=int:
+                        temporal_entity_start_index = int(temporal_entity_start_index)
+                    if type(temporal_entity_end_index)!=int:
+                        temporal_entity_end_index = int(temporal_entity_end_index)
+                    
+                    for i in range(temporal_entity_start_index,temporal_entity_end_index):
+                        if i>len(block_triplets["triplets"]):
+                            print(f"temporal entity index out of bound: {i}")
+                            continue
+
+                        block_triplets["triplets"][i].append(triplet)
+                else:
+                    print(f"invalid temporal entity: {temporal_list}")
+
+            else:
+                print(f"temporal entity is not surrounded by [] : {temporal}")
+                continue
+
+    except Exception as e:
+        print(f"erro parsing triplet data: {e},{fileData}")
+
+    
+    return block_triplets
+
+
+
 def pre_clean_prediction_data_onevision_v7(model_response, fileData=None, remove_entity_idx=False, contains_temporal_entity=False):
     block_triplets = {
         "triplets": [[] for i in range(8)],
