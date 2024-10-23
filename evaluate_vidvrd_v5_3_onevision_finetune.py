@@ -35,8 +35,6 @@ from typing import Dict
 from utils.utilities import get_varying_list
 
 
-
-
 def set_video(args, video_frame_index=[0,1,2,3,4,5,6,7]):
     video_path = args.video_path
     global input_video, video_time, frame_time
@@ -124,6 +122,8 @@ def init_main(args, finetuned=False):
             overwrite_config = {}
             if finetuned:
                 overwrite_config["vocab_size"] = 152064 # to make finetuning model work https://github.com/LLaVA-VL/LLaVA-NeXT/issues/187#issuecomment-2314195882
+                overwrite_config["tie_word_embeddings"] = False
+                overwrite_config['use_cache'] = True
             overwrite_config["mm_spatial_pool_mode"] = args.mm_spatial_pool_mode
             overwrite_config["mm_spatial_pool_stride"] = args.mm_spatial_pool_stride
             overwrite_config["mm_newline_position"] = args.mm_newline_position
@@ -354,12 +354,14 @@ if __name__=="__main__":
     version = args.output_dir
 
     splits = ["test"]
-    imagenet_vidvrd_root = "/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd"
+    imagenet_vidvrd_root = "/groups/sernam/datasets/VidVRD/VRDFormer_VRD/data/vidvrd"
     imagenet_vidvrd_video_path = os.path.join(imagenet_vidvrd_root, "videos")
     dataset = VidVRD(imagenet_vidvrd_root, imagenet_vidvrd_video_path, splits)
 
-    inference_output_dir  = f"{imagenet_vidvrd_root}/inference_outputs_onevision/{args.output_dir}" 
-    inference_prog_output_dir  = f"{imagenet_vidvrd_root}/inference_outputs_onevision/{args.output_dir}/prog" 
+    # inference_output_dir  = f"{imagenet_vidvrd_root}/inference_outputs_onevision/{args.output_dir}" 
+    # inference_prog_output_dir  = f"{imagenet_vidvrd_root}/inference_outputs_onevision/{args.output_dir}/prog" 
+    inference_output_dir  = args.output_dir
+    inference_prog_output_dir  = f"{args.output_dir}/prog" 
     os.makedirs(inference_output_dir,exist_ok=True)
     os.makedirs(inference_prog_output_dir,exist_ok=True)
 
@@ -795,7 +797,8 @@ if __name__=="__main__":
             pass
 
         try:
-            outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_{version}.json"
+            # outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_{version}.json"
+            outputfile = f"{inference_output_dir}/results.json"
             with open(outputfile, "w") as f:
                 json.dump(str(llava_response_json),f)
         except Exception as e:
@@ -803,13 +806,14 @@ if __name__=="__main__":
 
         try:
             outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_raw_response_{version}.json"
+            outputfile = f"{inference_output_dir}/results_raw_response.json"
             with open(outputfile, "w") as f:
                 json.dump(str(llava_raw_response_json),f)
         except Exception as e:
             print(f"error saving file: {e}")
 
         try:
-            outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_{version}_eval_data.json"
+            outputfile = f"{inference_output_dir}/results_eval_data.json"
             with open(outputfile, "w") as f:
                 json.dump(str(sg_eval_counts),f)
         except Exception as e:

@@ -1,18 +1,25 @@
 #!/bin/bash
 
+source ~/.bashrc
+conda activate llava
+
+module load cuda/cuda-12.1.0
+unset LD_LIBRARY_PATH
+
 # Set up the data folder
-IMAGE_FOLDER="/root/jbhoi/gits/VRDFormer_VRD/data/vidvrd/videos"
-VIDEO_FOLDER="/root/jbhoi/gits/VRDFormer_VRD/data/vidvrd/videos"
-DATA_YAML="/root/jbhoi/gits/LLaVA-NeXT/scripts/video/train/exp.yaml" # e.g exp.yaml
+IMAGE_FOLDER="/groups/sernam/datasets/VidVRD/VRDFormer_VRD/data/vidvrd/videos"
+VIDEO_FOLDER="/groups/sernam/datasets/VidVRD/VRDFormer_VRD/data/vidvrd/videos"
+DATA_YAML="scripts/video/train/exp.yaml" # e.g exp.yaml
 
 ############### Prepare Envs #################
-python3 -m pip install flash-attn --no-build-isolation
 alias python=python3
 ############### Show Envs ####################
 
 nvidia-smi
 
 ################ Arnold Jobs ################
+
+export WANDB_PROJECT="LLM4VideoSGG"
 
 LLM_VERSION="Qwen/Qwen2-7B-Instruct"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
@@ -25,13 +32,14 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
-MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-ov_to_video_am9_vrd_v5_3"
+MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-ov_to_video_am9_vidvrd_v5_3_shuffled_split0_lora128_256"
 #PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-ov-si"  
 PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-si" 
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
-
+    # --mm_tunable_parts="mm_language_model" \
+# --mm_vision_tower_lr=2e-6 \
 # ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
 deepspeed --master_port 30000 \
     llava/train/train_mem.py \
@@ -41,9 +49,10 @@ deepspeed --master_port 30000 \
     --data_path $DATA_YAML \
     --image_folder $IMAGE_FOLDER \
     --video_folder $VIDEO_FOLDER \
-    --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
-    --mm_vision_tower_lr=2e-6 \
+    --lora_enable True \
+    --lora_r 128 --lora_alpha 256 \
     --vision_tower ${VISION_MODEL_VERSION} \
+    --mm_projector_lr 2e-5 \
     --mm_projector_type mlp2x_gelu \
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
