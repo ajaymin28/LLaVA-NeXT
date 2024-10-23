@@ -24,19 +24,23 @@ def main(annot_path, new_annot_save_path, new_video_path_root, shuffle_data=Fals
                 else:
                     jsonData[annotIdx] = annot
             if not shuffle_data:
-                with open(os.path.join(new_annot_save_path, jsonfileName), "w") as f:
+
+                jsonSavePath = os.path.join(new_annot_save_path, jsonfileName)
+                
+                with open(jsonSavePath, "w") as f:
                     json.dump(jsonData, f)
-                print(f"Saved : {os.path.join(new_annot_save_path, jsonfileName)}")
+                
+                print(f"Saved:{jsonSavePath}")
 
     if shuffle_data:
         random.shuffle(all_data)
         chunkedData = chunk_list(list_=all_data,chunk_n=1000)
         for chunk_idx,chunk in enumerate(chunkedData):
-            shuffled_data_jsonName = f"videochatgpt_tune_part{chunk_idx}.json"
+            shuffled_data_jsonSavePath = os.path.join(new_annot_save_path, f"videochatgpt_tune_part{chunk_idx}.json")
 
-            with open(os.path.join(new_annot_save_path, shuffled_data_jsonName), "w") as f:
+            with open(shuffled_data_jsonSavePath, "w") as f:
                 json.dump(chunk, f)
-            print(f"Saved : {os.path.join(new_annot_save_path, shuffled_data_jsonName)}")
+            print(f"Saved : {shuffled_data_jsonSavePath}")
 
 
 if __name__ == "__main__":
