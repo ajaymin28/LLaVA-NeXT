@@ -1,9 +1,26 @@
 #!/bin/bash
 
+# unset PATH
+#unset CUDA_HOME
+
+source ~/.bashrc
+##conda activate vlnext
+module load gcc/gcc-11.2.0
+module load cuda/cuda-12.1.0
+# unset LD_LIBRARY_PATH
+echo $LD_LIBRARY_PATH
+
 # Set up the data folder
 IMAGE_FOLDER="/groups/sernam/datasets/ActionGenome/Charades_v1_480"
 VIDEO_FOLDER="/groups/sernam/datasets/ActionGenome/Charades_v1_480"
 DATA_YAML="scripts/video/train/exp.yaml" # e.g exp.yaml
+
+# source ~/.bashrc
+# conda activate vlnext
+# module load gcc/gcc-11.2.0
+# export CUDA_HOME=/home/jbhol/cuda/cuda-12.1
+# export PATH=${CUDA_HOME}/bin:${PATH}
+# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/jbhol/cuda/cuda-12.1/targets/x86_64-linux/lib
 
 ############### Prepare Envs #################
 #python3 -m pip install flash-attn --no-build-isolation
@@ -15,14 +32,6 @@ nvidia-smi
 ################ Arnold Jobs ################
 
 export WANDB_PROJECT="LLM4VideoSGG"
-
-# source ~/.bashrc
-# conda activate vlnext
-module load gcc/gcc-11.2.0
-export CUDA_HOME=/home/jbhol/cuda/cuda-12.1
-export PATH=${CUDA_HOME}/bin:${PATH}
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/jbhol/cuda/cuda-12.1/targets/x86_64-linux/lib
-
 
 LLM_VERSION="Qwen/Qwen2-7B-Instruct"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
@@ -42,6 +51,7 @@ echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
 ## --mm_projector_lr 2e-5
+##     --init_lora_weights olora \
 # ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
 deepspeed --master_port 30000 \
     llava/train/train_mem.py \
