@@ -712,8 +712,6 @@ def pre_clean_prediction_data_onevision_v14_vrd(model_response, fileData=None, r
 
     return block_triplets
 
-
-
 def pre_clean_temporal_triplets(model_response, fileData=None, remove_entity_idx=False):
     ##[red panda-0:lie next to:red panda-1]_[Frame-0:Frame-7];[red panda-0:lie left:red panda-1]_[Frame-0:Frame-7];[red panda-1:lie right:red panda-0]_[Frame-0:Frame-7];[red panda-1:lie next to:red panda-0]_[Frame-0:Frame-7];[red panda-0:lie next to:red panda-2]_[Frame-0:Frame-7];[red panda-0:lie left:red panda-2]_[Frame-0:Frame-7];[red panda-2:sit right:red panda-0]_[Frame-0:Frame-7];[red panda-2:sit next to:red panda-0]_[Frame-0:Frame-7];[red panda-2:taller:red panda-0]_[Frame-0:Frame-7];[red panda-1:lie next to:red panda-2]_[Frame-0:Frame-7];[red panda-1:lie left:red panda-2]_[Frame-0:Frame-7];[red panda-2:sit right:red panda-1]_[Frame-0:Frame-7];[red panda-2:sit next to:red panda-1]_[Frame-0:Frame-7];[red panda-2:taller:red panda-1]_[Frame-0:Frame-7];
     block_triplets = {
@@ -784,8 +782,6 @@ def pre_clean_temporal_triplets(model_response, fileData=None, remove_entity_idx
 
     
     return block_triplets
-
-
 
 def pre_clean_prediction_data_onevision_v7(model_response, fileData=None, remove_entity_idx=False, contains_temporal_entity=False):
     block_triplets = {
