@@ -22,7 +22,7 @@ import torch
 from llava.model import *
 from llava.constants import DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from llava.utils import rank0_print
-
+from peft import PeftModel
 
 def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", torch_dtype="float16",attn_implementation="flash_attention_2", customized_config=None, overwrite_config=None, **kwargs):
     kwargs["device_map"] = device_map
@@ -88,6 +88,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                         setattr(lora_cfg_pretrained, k, v)
 
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
+                # model = LlavaQwenForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, attn_implementation=attn_implementation, **kwargs)
                 model = LlavaQwenForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, attn_implementation=attn_implementation, **kwargs)
             else:
                 from llava.model.language_model.llava_llama import LlavaConfig

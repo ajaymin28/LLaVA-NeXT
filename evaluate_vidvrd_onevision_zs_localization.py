@@ -33,6 +33,67 @@ encoder.FLOAT_REPR = lambda o: format(o, '.2f')
 import random
 from typing import Dict
 from utils.utilities import get_varying_list
+from utils.misc import remove_entity_index
+
+
+vidvrd_predicates_numbered = """1.jump right 2.stand left 3.taller 4.jump past 5.jump behind 6.stand front 7.sit next to 8.sit behind 9.sit front 10.next to 11.front 12.stand next to 13.stand behind 14.walk right 15.walk next to 16.walk left 17.walk past 18.walk front 19.walk behind 20.faster 21.larger 22.stand with 23.stand right 24.walk with 25.walk toward 26.walk away 27.stop right 28.stop beneath 29.stand above 30.ride 31.run beneath 32.sit above 33.sit beneath 34.sit left 35.sit right 36.walk above 37.behind 38.watch 39.hold 40.feed 41.touch 42.right 43.left 44.follow 45.move front 46.move beneath 47.chase 48.run left 49.run right 50.lie next to 51.lie behind 52.play 53.move behind 54.jump beneath 55.fly with 56.fly past 57.move right 58.move left 59.swim front 60.swim left 61.move with 62.jump front 63.jump left 64.swim right 65.swim next to 66.jump next to 67.swim with 68.move past 69.bite 70.pull 71.jump toward 72.fight 73.run front 74.run behind 75.sit inside 76.drive 77.lie front 78.stop behind 79.lie left 80.stop left 81.lie right 82.creep behind 83.creep above 84.beneath 85.above 86.fall off 87.stop front 88.run away 89.run next to 90.away 91.jump away 92.fly next to 93.lie beneath 94.jump above 95.lie above 96.walk beneath 97.stand beneath 98.move toward 99.toward 100.past 101.move away 102.run past 103.fly behind 104.fly above 105.fly left 106.lie with 107.creep away 108.creep left 109.creep front 110.run with 111.run toward 112.creep right 113.creep past 114.fly front 115.fly right 116.fly away 117.fly toward 118.stop above 119.stand inside 120.kick 121.run above 122.swim beneath 123.jump with 124.lie inside 125.move above 126.move next to 127.creep next to 128.creep beneath 129.swim behind 130.stop next to 131.stop with 132.creep toward"""
+vidvrd_objects_numbered = """1.antelope 2.person 3.dog 4.zebra 5.bicycle 6.horse 7.monkey 8.fox 9.elephant 10.lion 11.giant_panda 12.airplane 13.whale 14.watercraft 15.car 16.bird 17.cattle 18.rabbit 19.snake 20.frisbee 21.motorcycle 22.ball 23.domestic_cat 24.bear 25.red_panda 26.lizard 27.skateboard 28.sheep 29.squirrel 30.bus 31.sofa 32.train 33.turtle 34.tiger 35.hamster"""
+
+# """
+# "frame-2": {
+#             "objects": ["person-2", "dog-4"],
+#             "object_bonding_box": [[0.160,0.245,0.450,0.750], [0.530,0.670,0.610,0.740]]
+#         },
+#         "frame-3": {
+#             "objects": ["person-2", "dog-4"],
+#             "object_bonding_box": [[0.120,0.200,0.480,0.770], [0.450,0.600,0.710,0.840]]
+#         },
+#         "frame-4": {
+#             "objects": ["person-2", "dog-4"],
+#             "object_bonding_box": [[0.150,0.240,0.470,0.750], [0.360,0.460,0.780,0.920]]
+#         }
+# """
+def get_localization_prompt(OBJECTS_list):
+    SG_Tagging_prompt = """
+    You are given a video and a list of objects, your task is to detect those objects and give bounding box coordinates for those objects.
+    The bounding box coordiantes are in [xmin,ymin,xmax,ymax] normlized values between 0 to 1 floting points (e.g [0.201,0.457,0.672,0.854])
+
+    For example,
+    list of objects: ["person-2","dog-4"]
+    Response: {
+        "results": {
+            "objects": ["person-2", "dog-4"],
+            "object_bonding_box": [[0.154,0.236,0.458,0.754],[0.236,0.356,0.789,0.873]]
+        },
+    }
+
+    Now for the given video and list of objects="""+ str(OBJECTS_list) + """, detect bounding boxes. Reponse:"""
+    return SG_Tagging_prompt
+
+def get_sg_tagging_prompt_top1(subject_, object_, predicates):
+    SG_Tagging_prompt = f"""You are given a relations list as follows : {predicates}, 
+    Your task is to select a relation from the provided list for given object pairs e.g <person-1,person-2> that best describes the object pairs in the video.
+    Each object is assigned an Id to identify them in the video, use these ids to identify the objects in the video and then give the relationship between them.
+    For example, 
+    What is the relationship between <person-1, dog-3>? Answer: """+ "{'top-1':'7.sit next to.'}" + """
+    What is the relationship between <zebra-1, zebra-2>? Answer: """ + "{'top-1':'2.stand left'}" + f"""
+
+    Now in the given video, What is the relationship between <{subject_},{object_}>? Answer:"""
+    return SG_Tagging_prompt
+
+def get_sg_tagging_prompt(subject_, object_, predicates, topk=1):
+    if topk==1:
+        return get_sg_tagging_prompt_top1(subject_, object_, predicates)
+
+    SG_Tagging_prompt = f"""You are given a relations list as follows : {predicates}, 
+    Your task is to select Top 5 relations from the provided list for given object pairs e.g <person-1,person-2> that best describes the object pairs in the video.
+    Each object is assigned an Id to identify them in the video, use these ids to identify the objects in the video and then give the relationship between them.
+    For example, 
+    What is the relationship between <person-1, dog-3>? Answer: """+ "{'top-5':['7.sit next to.','10.next to','3.taller', '9.sit front', '19.walk behind']}" + """
+    What is the relationship between <zebra-1, zebra-2>? Answer: """ + "{'top-5':['2.stand left','3.taller', '24.walk with', '58.move left', '22.stand with']}" + f"""
+
+    Now in the given video, What is the relationship between <{subject_},{object_}>? Answer:"""
+    return SG_Tagging_prompt
 
 def set_video(args, video_frame_index=[0,1,2,3,4,5,6,7]):
     video_path = args.video_path
@@ -121,8 +182,6 @@ def init_main(args, finetuned=False):
             overwrite_config = {}
             if finetuned:
                 overwrite_config["vocab_size"] = 152064 # to make finetuning model work https://github.com/LLaVA-VL/LLaVA-NeXT/issues/187#issuecomment-2314195882
-                overwrite_config["tie_word_embeddings"] = False
-                overwrite_config['use_cache'] = True
             overwrite_config["mm_spatial_pool_mode"] = args.mm_spatial_pool_mode
             overwrite_config["mm_spatial_pool_stride"] = args.mm_spatial_pool_stride
             overwrite_config["mm_newline_position"] = args.mm_newline_position
@@ -306,13 +365,18 @@ def parse_args():
 
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--max-new-tokens", type=int, default=4000)
+    parser.add_argument("--topk", type=int, default=1)
     return parser.parse_args()
 
 if __name__=="__main__":
     args = parse_args()
     print(args)
 
-    init_main(args,finetuned=True)
+    finetuned = True
+    if args.model_path=="lmms-lab/llava-onevision-qwen2-7b-ov":
+        finetuned = False
+
+    init_main(args,finetuned=finetuned)
 
     sg_eval_counts = {
         "total_obj_cnt" : 0,
@@ -353,14 +417,12 @@ if __name__=="__main__":
     version = args.output_dir
 
     splits = ["test"]
-    imagenet_vidvrd_root = "/groups/sernam/datasets/VidVRD/VRDFormer_VRD/data/vidvrd"
+    imagenet_vidvrd_root = "/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd"
     imagenet_vidvrd_video_path = os.path.join(imagenet_vidvrd_root, "videos")
     dataset = VidVRD(imagenet_vidvrd_root, imagenet_vidvrd_video_path, splits)
 
-    # inference_output_dir  = f"{imagenet_vidvrd_root}/inference_outputs_onevision/{args.output_dir}" 
-    # inference_prog_output_dir  = f"{imagenet_vidvrd_root}/inference_outputs_onevision/{args.output_dir}/prog" 
-    inference_output_dir  = args.output_dir
-    inference_prog_output_dir  = f"{args.output_dir}/prog" 
+    inference_output_dir  = f"{imagenet_vidvrd_root}/inference_outputs_onevision/{args.output_dir}" 
+    inference_prog_output_dir  = f"{imagenet_vidvrd_root}/inference_outputs_onevision/{args.output_dir}/prog" 
     os.makedirs(inference_output_dir,exist_ok=True)
     os.makedirs(inference_prog_output_dir,exist_ok=True)
 
@@ -417,8 +479,8 @@ if __name__=="__main__":
     llava_raw_response_json = {}
     frame_block = 0
     overall_metric = {
-        "subject": {"precision": [], "recall": []},
-        "object": {"precision": [], "recall": []},
+        # "subject": {"precision": [], "recall": []},
+        # "object": {"precision": [], "recall": []},
         "predicate": {"precision": [], "recall": []},
         "triplet": {"precision": [], "recall": []} 
     }
@@ -489,6 +551,7 @@ if __name__=="__main__":
             frame_counter = 0
             tripletes_for_current_block = ""
             tripletes_list_for_current_block = []
+            tripletes_box_for_current_block = []
             current_block_triplet_data = {
                 "subjects": [],
                 "objects": [],
@@ -510,7 +573,10 @@ if __name__=="__main__":
                 max_triplets_to_add = 5
                 added_triplets = []
                 current_frame_triplets = []
+                current_frame_bbox = []
                 for index_to_draw, triplet in enumerate(frame_data["triplets"]):
+
+                    bbox = frame_data["bbox"][index_to_draw]
                                 
                     subj = triplet[0]
                     predicate = triplet[1]
@@ -540,11 +606,13 @@ if __name__=="__main__":
                             # current_frame_triplets.append([f"{subj}-{subj_id}", f"{predicate}", f"{obj}-{obj_id}"])
                             # v3_1 changes predicate last
                             current_frame_triplets.append([f"{subj}-{subj_id}", f"{obj}-{obj_id}",f"{predicate}"])
+                            current_frame_bbox.append(bbox)
                 
                 
                 if len(current_frame_triplets)>0:
                     frame_indices.append(frame_idx)
                     tripletes_list_for_current_block.append(current_frame_triplets)
+                    tripletes_box_for_current_block.append(current_frame_bbox)
                     # print("adding index", frame_idx)
                     frame_counter +=1
 
@@ -553,6 +621,7 @@ if __name__=="__main__":
                             "frame_idxes": frame_indices,
                             "frames_sgs": tripletes_for_current_block+f"{SGSpecialTokens.SG_END}",
                             "triplets": tripletes_list_for_current_block,
+                            "triplets_bbox": tripletes_box_for_current_block,
                             "current_block_triplet_data": copy.deepcopy(current_block_triplet_data) 
 
                         })
@@ -561,6 +630,7 @@ if __name__=="__main__":
                         frame_counter = 0
                         frame_indices = []
                         tripletes_list_for_current_block = []
+                        tripletes_box_for_current_block= []
                         current_block_triplet_data = {
                             "subjects": [],
                             "objects": [],
@@ -579,7 +649,8 @@ if __name__=="__main__":
                             "frame_idxes": frame_indices,
                             "frames_sgs": tripletes_for_current_block+f"{SGSpecialTokens.SG_END}",
                             "triplets": tripletes_list_for_current_block,
-                            "current_block_triplet_data": current_block_triplet_data
+                            "current_block_triplet_data": current_block_triplet_data,
+                            "triplets_bbox": tripletes_box_for_current_block
                         })
                         
             # capture.release()
@@ -587,17 +658,13 @@ if __name__=="__main__":
 
         # print("len of overall annot", len(overall_annotations))
         block_metric = {
-            "subject": {"precision": [], "recall": []},
-            "object": {"precision": [], "recall": []},
+            # "subject": {"precision": [], "recall": []},
+            # "object": {"precision": [], "recall": []},
             "predicate": {"precision": [], "recall": []},
             "triplet": {"precision": [], "recall": []}
         }
         last_processed_time = None
-
-        random.seed(42)
-
-        subset_samples = random.sample(overall_annotations, k=min(5, len(overall_annotations)))
-        for frame_block_index, overall_annot in enumerate(subset_samples):
+        for frame_block_index, overall_annot in enumerate(overall_annotations):
             # if frame_block_index%2==0:
             #     continue
 
@@ -605,31 +672,29 @@ if __name__=="__main__":
                 last_processed_time = time.perf_counter()
             
             nowTime = time.perf_counter()
-            print(f"Processing video: {video_id} Block {frame_block_index}/{len(subset_samples)} last processed in:{round((nowTime-last_processed_time),4)}")
+            print(f"Processing video: {video_id} Block {frame_block_index}/{len(overall_annotations)} last processed in:{round((nowTime-last_processed_time),4)}")
             last_processed_time = nowTime
 
             Block_GT_Triplets = overall_annot["triplets"]
             Block_frame_ids = overall_annot["frame_idxes"]
+            Block_bb = overall_annot["triplets_bbox"]
 
-            current_block_triplet_data = copy.deepcopy(overall_annot["current_block_triplet_data"])
+            # current_block_triplet_data = copy.deepcopy(overall_annot["current_block_triplet_data"])
+            # final_subjects_list = get_varying_list(current_block_list=current_block_triplet_data["subjects"], 
+            #                                 full_list=GtData["subjects"], 
+            #                                 fix_size=50) 
 
-            final_subjects_list = get_varying_list(current_block_list=current_block_triplet_data["subjects"], 
-                                            full_list=GtData["subjects"], 
-                                            fix_size=50) 
+            # final_objects_list = get_varying_list(current_block_list=current_block_triplet_data["objects"], 
+            #                                 full_list=GtData["objects"], 
+            #                                 fix_size=50)
 
-            final_objects_list = get_varying_list(current_block_list=current_block_triplet_data["objects"], 
-                                            full_list=GtData["objects"], 
-                                            fix_size=50)
-
-            final_predicates_list = get_varying_list(current_block_list=current_block_triplet_data["predicates"], 
-                                            full_list=GtData["predicates"], 
-                                            fix_size=50) # total 132 predicates in vidvrd
-            
-
-            TripletQ = getRandomPrompt(key='triplet_prompt', static=False)
-            TripletQ = TripletQ.replace("{subjects}", ",".join(final_subjects_list))
-            TripletQ = TripletQ.replace("{objects}", ",".join(final_objects_list))
-            TripletQ = TripletQ.replace("{predicates}", ",".join(final_predicates_list))
+            # final_predicates_list = get_varying_list(current_block_list=current_block_triplet_data["predicates"], 
+            #                                 full_list=GtData["predicates"], 
+            #                                 fix_size=50) # total 132 predicates in vidvrd
+            # TripletQ = getRandomPrompt(key='triplet_prompt', static=False)
+            # TripletQ = TripletQ.replace("{subjects}", ",".join(final_subjects_list))
+            # TripletQ = TripletQ.replace("{objects}", ",".join(final_objects_list))
+            # TripletQ = TripletQ.replace("{predicates}", ",".join(final_predicates_list))
 
 
             if video_id not in llava_response_json:
@@ -640,185 +705,129 @@ if __name__=="__main__":
                 llava_response_json[video_id][frame_block_index] = {}
                 llava_raw_response_json[video_id][frame_block_index] = {}
 
+            Block_predicated_triplets = []
+            unique_gt_triplets = []
 
-            
+            gt_all = {
+                "triplet": [],
+                "tripletScore": [],
+                "subject": [],
+                "object": [],
+                "predicate": [], 
+                "bb": [],
+                "sub_obj_pairs":[]}
+            pred_all = {"triplet": [],"tripletScore": [],"subject": [],"object": [],"predicate": [], "sub_obj_pairs":[]}
+
+            for gt_trip_frame_idx, frame_gt_triplet_data in enumerate(Block_GT_Triplets):
+                frame_bb_data = Block_bb[gt_trip_frame_idx]
+                for gtidx, gt_triplet in enumerate(frame_gt_triplet_data):
+                    subj, obj, predicate = gt_triplet
+                    bb = frame_bb_data[gtidx]
+
+                    if [subj, obj] not in gt_all["sub_obj_pairs"]:
+                        gt_all["sub_obj_pairs"].append([subj, obj])
+                        gt_all["bb"].append(bb)
+                    
+                    if gt_triplet not in gt_all["triplet"]:
+                        gt_all["triplet"].append(gt_triplet)
+                        gt_all["tripletScore"].append({"triplet": gt_triplet, "score": 1.0})
+
+                    if subj not in gt_all["subject"]:
+                        gt_all["subject"].append(subj)
+
+                    if obj not in gt_all["object"]:
+                        gt_all["object"].append(obj)
+
+                    if predicate not in gt_all["predicate"]:
+                        gt_all["predicate"].append(predicate)
+
+
+
+            predicted_bb = {}
+
             video_path = os.path.join(videos_root, video_id+".mp4")
             file = video_path if isinstance(video_path, list) else [video_path]
             args.video_path = video_path
             set_video(args=args, video_frame_index=Block_frame_ids)
-            outputs_unclean = get_model_output(prompt=TripletQ,file=file,batch_of_frames=Block_frame_ids)
-            outputs = pre_clean_prediction_data_v18(outputs_unclean["triplets"])
+            for subobjpair_idx, subobjpair in enumerate(gt_all["sub_obj_pairs"]):
+                subj, obj = subobjpair
+                bb = gt_all["bb"][subobjpair_idx]
+                localization_prompt = get_localization_prompt([subj, obj])
+                outputs_unclean = get_model_output(prompt=localization_prompt,file=file,batch_of_frames=Block_frame_ids)
 
+                try:
+                    outputformatted = eval(outputs_unclean["triplets"])
+                except Exception as e:
+                    print(f"error parsing output: {outputs_unclean['triplets']}")
+                    continue
 
-
-            llava_response_json[video_id][frame_block_index] = {
-                # "objects_list": outputs["objects_list"],
-                "triplets": outputs,
-                "frames": Block_frame_ids,
-                "GT_triplets": Block_GT_Triplets
-            }
+                if type(outputformatted)==dict:
+                    for frameid, frame_data in outputformatted.items():
+                        """
+                        "objects": ["person-2", "dog-4"]
+                        "object_bonding_box": [[0.154,0.236,0.458,0.754],[0.236,0.356,0.789,0.873]]
+                        """
+                        objects = frame_data["objects"]
+                        objects_bb = frame_data["object_bonding_box"]
+                        if len(objects)==len(objects_bb):
+                            for obj_idx, pred_obj in enumerate(objects):
+                                obj_bb = objects_bb[obj_idx]
+                                if pred_obj==subj:
+                                    predicted_bb[pred_obj] = {"boxes": [obj_bb], "gt_bbox": [bb[0]]}
+                                elif pred_obj==obj:
+                                    predicted_bb[pred_obj] = {"boxes": [obj_bb], "gt_bbox": [bb[1]]}
+                                # if obj not in predicted_bb:
+                                #     predicted_bb[obj] = {"boxes": [], "gt_bbox": [bb]}
+                                # predicted_bb[obj]["boxes"].append(obj_bb)
+                        else:
+                            print(f"object and bounding box list len is different: obj {len(objects)} bb: {len(objects_bb)}")
+                else:
+                    print(f"invalid type: {type(outputformatted)}: {outputformatted}")
+                # except Exception as e:
+                #     print(f"error parsing model output : {outputs_unclean}")
+                    
+            
+                # llava_response_json[video_id][frame_block_index] = {
+                #     # "objects_list": outputs["objects_list"],
+                #     "frames": Block_frame_ids,
+                #     "GT_triplets": Block_GT_Triplets,
+                #     "GT_BB": Block_bb,
+                #     "Pred_BB": predicted_bb
+                # }
 
             llava_raw_response_json[video_id][frame_block_index] = {
+                # "objects_list": outputs["objects_list"],
+                # "triplets": pred_all["triplet"],
                 "frames": Block_frame_ids,
                 "GT_triplets": Block_GT_Triplets,
-                "raw": outputs_unclean["triplets"],
-                "Prompt": TripletQ,
-                "cleaned_output": outputs
+                # "GT_BB": Block_bb,
+                "Pred_BB": predicted_bb
+
             }
 
-
-            try:
-                Block_GT_triplets_woids = remove_ids(Block_GT_Triplets,version="v3_1",remove_indexes=True)
-                Block_predicated_triplets_woids = remove_ids(outputs,version="v3_1",remove_indexes=True)
-            except Exception as e:
-                print(f"error removing ids {e}")
-                pass
-
-            frame_metric = {
-                "subject": {"precision": [], "recall": []},
-                "object": {"precision": [], "recall": []},
-                "predicate": {"precision": [], "recall": []},
-                "triplet": {"precision": [], "recall": []}
-            }
-            for fidx, GT_tripdata in enumerate(Block_GT_triplets_woids):
-                results = None
-
-                frame_GT_triplets = GT_tripdata
-                frame_pred_triplets = []
-
-                try:frame_pred_triplets = Block_predicated_triplets_woids[fidx]
-                except Exception as e:
-                    pass
-
-                gt_relations = [] # {"triplet": ['adult', 'sitting', 'sofa'], "score": 1.0},
-                pred_relations = [] # {"triplet": ['adult', 'sitting', 'sofa'], "score": 1.0},
-
-                gt_all = {"triplet": [],"subject": [],"object": [],"predicate": []}
-                pred_all = {"triplet": [],"subject": [],"object": [],"predicate": []}
-
-                for fgt in frame_GT_triplets:
-                    fgt_s, fgt_p, fgt_o = fgt  # v3_1 changes
-                    gt_all["triplet"].append({"triplet": fgt, "score": 1.0})
-                    gt_all["subject"].append({"triplet": fgt_s, "score": 1.0})
-                    gt_all["predicate"].append({"triplet": fgt_p, "score": 1.0})
-                    gt_all["object"].append({"triplet": fgt_o, "score": 1.0})
-
-                for fpred in frame_pred_triplets:
-                    fpred_s, fpred_p, fpred_o  = fpred # v3_1 changes
-                    pred_all["triplet"].append({"triplet": fpred, "score": 1.0})
-                    pred_all["subject"].append({"triplet": fpred_s, "score": 1.0})
-                    pred_all["predicate"].append({"triplet": fpred_p, "score": 1.0})
-                    pred_all["object"].append({"triplet": fpred_o, "score": 1.0})
-
-                    if fpred_s not in GtData["subjects"]:
-                        if fpred_s not in PredData["subjects"]:
-                            PredData["subjects"].append(fpred_s)
-                    if fpred_p not in GtData["predicates"]:
-                        if fpred_p not in PredData["predicates"]:
-                            PredData["predicates"].append(fpred_p)
-                    if fpred_o not in GtData["objects"]:
-                        if fpred_o not in PredData["objects"]:
-                            PredData["objects"].append(fpred_o)
-
-                for fm_key, fmdata in frame_metric.items():
-                    """
-                    Eval score for each frame
-                    """
-                    prec, rec, hit_scores = eval_tagging_scores(gt_relations=gt_all[fm_key],pred_relations=pred_all[fm_key],min_pred_num=1)
-                    frame_metric[fm_key]["precision"].append(prec)
-                    frame_metric[fm_key]["recall"].append(rec)
-
-                
-                if len(GT_tripdata)>0 and len(frame_pred_triplets)>0:
-                    try:
-                        results = calculate_accuracy_varying_lengths(gt_triplets=GT_tripdata,pred_triplets=frame_pred_triplets, remove_duplicates=False)
-                    except Exception as e:
-                        print(f"error calculating score for vid {video_id} block:{frame_block_index} fidx {fidx} actual_fidx: {Block_frame_ids[fidx]}")
-
-                    if results is not None:
-                        sg_eval_counts["correct_pred_triplets_cnt"] +=  results["correct_triplet_cnt"]
-                        sg_eval_counts["correct_obj_pred_cnt"] += results["correct_object_cnt"]
-                        sg_eval_counts["correct_subj_pred_cnt"] +=  results["correct_subject_cnt"]
-                        sg_eval_counts["correct_predicate_cnt"] +=  results["correct_predicate_cnt"]
-                        sg_eval_counts["gt_triplets_cnt"] +=  results["total_triplets"]
-                        sg_eval_counts["total_predicted_triplets"] += results["total_predicted_triplets"]
-                        sg_eval_counts["total_obj_cnt"] +=  results["total_objects"]
-                        sg_eval_counts["total_sub_cnt"] +=  results["total_subjects"]
-                        sg_eval_counts["total_pred_cnt"] +=  results["total_predicates"] 
-                else:
-                    pass
-                    # print(f"vid {video_id} block:{frame_block_index} fidx {fidx} actual_fidx:{Block_frame_ids[fidx]} lengt: {len(GT_tripdata)} lenpred: {frame_pred_triplets} outputs: {outputs}, unclean: {outputs_unclean}")
-
-
-            for bm_key, bmdata in block_metric.items():
-                """
-                    average eval score for each frame and appned it to block
-                """
-                if len(frame_metric[bm_key]["precision"])>0 and len(frame_metric[bm_key]["recall"])>0:
-                    block_metric[bm_key]["precision"].append(np.average(np.array(frame_metric[bm_key]['precision'])))
-                    block_metric[bm_key]["recall"].append(np.average(np.array(frame_metric[bm_key]['recall'])))
-        
-        
-        for oam_key, oamdata in overall_metric.items():
-            """
-                    average eval score for each block and appned it to overall
-            """
-            if len(block_metric[oam_key]["precision"])>0 and len(block_metric[oam_key]["recall"])>0:
-
-                overall_metric[oam_key]["precision"].append(round(float(np.average(np.array(block_metric[oam_key]['precision']))), 4))
-                overall_metric[oam_key]["recall"].append(round(float(np.average(np.array(block_metric[oam_key]['recall']))), 4))
 
         with open(f"{inference_prog_output_dir}/{val_id_idx}_{len(val_ids)}.txt", "w") as f:
-            f.write(json.dumps(overall_metric, indent=4))
+            f.write(str(outputs_unclean))
         
         pbar.n +=1
         pbar.last_print_n = pbar.n
         pbar.refresh()
 
-        sg_eval_counts["VRDFormer_Logic"] = {}
-        total_vid_ids = len(overall_metric["triplet"]["precision"])
-        for metric_key, metric_values in overall_metric.items():
-            if metric_key not in sg_eval_counts["VRDFormer_Logic"].keys():
-                sg_eval_counts["VRDFormer_Logic"][metric_key] = {}
-            
-            if len(overall_metric[metric_key]["precision"])>0 and len(overall_metric[metric_key]["recall"])>0:
-                overall_precision = np.average(np.array(overall_metric[metric_key]["precision"], dtype=np.float32))
-                overall_recall = np.average(np.array(overall_metric[metric_key]["recall"], dtype=np.float32))
-                sg_eval_counts["VRDFormer_Logic"][metric_key] = {
-                    "Precision@1": round(float(overall_precision), 4),
-                    "Recall@1": round(float(overall_recall), 4),
-                }
-        sg_eval_counts["VRDFormer_Logic"]["TotalVideos"] = total_vid_ids
 
-        try:
-            sg_eval_counts["dataset_meta"] ={
-                "dataset_triplets_existing": GtData,
-                "dataset_triplets_new": PredData
-            }
-        except Exception as e:
-            pass
-
-        try:
-            # outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_{version}.json"
-            outputfile = f"{inference_output_dir}/results.json"
-            with open(outputfile, "w") as f:
-                json.dump(llava_response_json,f, indent=4)
-        except Exception as e:
-            print(f"error saving file: {e}")
+        # try:
+        #     outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_{version}.json"
+        #     with open(outputfile, "w") as f:
+        #         json.dump(str(llava_response_json),f)
+        # except Exception as e:
+        #     print(f"error saving file: {e}")
 
         try:
             outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_raw_response_{version}.json"
-            outputfile = f"{inference_output_dir}/results_raw_response.json"
             with open(outputfile, "w") as f:
-                json.dump(llava_raw_response_json,f, indent=4)
+                json.dump(str(llava_raw_response_json),f)
         except Exception as e:
             print(f"error saving file: {e}")
 
-        try:
-            outputfile = f"{inference_output_dir}/results_eval_data.json"
-            with open(outputfile, "w") as f:
-                json.dump(sg_eval_counts,f, indent=4)
-        except Exception as e:
-            print(f"error saving file: {e}")
+    
 
        

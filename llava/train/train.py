@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 import json
 import logging
 import pathlib
-from typing import Dict, Optional, Sequence, List
+from typing import Dict, Optional, Sequence, List, Union
 from PIL import Image, ImageFile
 from packaging import version
 import numpy as np
@@ -149,6 +149,7 @@ class TrainingArguments(transformers.TrainingArguments):
     double_quant: bool = field(default=True, metadata={"help": "Compress the quantization statistics through double quantization."})
     quant_type: str = field(default="nf4", metadata={"help": "Quantization data type to use. Should be one of `fp4` or `nf4`."})
     bits: int = field(default=16, metadata={"help": "How many bits to use."})
+    init_lora_weights: Optional[str] = field(default=True, metadata={"help": "Lora weights initialization."})
     lora_enable: bool = False
     lora_r: int = 64
     lora_alpha: int = 16
@@ -243,6 +244,7 @@ def find_all_linear_names(model):
     cls = torch.nn.Linear
     lora_module_names = set()
     multimodal_keywords = ["mm_projector", "vision_tower", "vision_resampler"]
+    
     for name, module in model.named_modules():
         if any(mm_keyword in name for mm_keyword in multimodal_keywords):
             continue
@@ -252,6 +254,11 @@ def find_all_linear_names(model):
 
     if "lm_head" in lora_module_names:  # needed for 16-bit
         lora_module_names.remove("lm_head")
+    
+    # added
+    # lora_module_names.add('fc1')
+    # lora_module_names.add('fc2')
+
     return list(lora_module_names)
 
 
@@ -1522,12 +1529,14 @@ def train(attn_implementation=None):
             lora_dropout=training_args.lora_dropout,
             bias=training_args.lora_bias,
             task_type="CAUSAL_LM",
+            init_lora_weights=training_args.init_lora_weights,
         )
         if training_args.bits == 16:
             if training_args.bf16:
                 model.to(torch.bfloat16)
             if training_args.fp16:
                 model.to(torch.float16)
+
         rank0_print("Adding LoRA adapters...")
         model = get_peft_model(model, lora_config)
 
@@ -1611,7 +1620,31 @@ def train(attn_implementation=None):
         model.config.mm_spatial_pool_stride = model_args.mm_spatial_pool_stride 
 
         ### Deciding train which part of the model
-        if model_args.mm_tunable_parts is None:  # traditional way of deciding which part to train
+        if training_args.lora_enable:
+            rank0_print(f"Using mm_tunable_parts with LoRA Enabled: {model_args.mm_tunable_parts}")
+            model.config.mm_tunable_parts = training_args.mm_tunable_parts = model_args.mm_tunable_parts
+            # Set the entire model to not require gradients by default
+            model.requires_grad_(False)
+            vision_tower.requires_grad_(False)
+            model.get_model().mm_projector.requires_grad_(False)
+            model.get_model().vision_resampler.requires_grad_(False)
+            # Parse the mm_tunable_parts to decide which parts to unfreeze
+            tunable_parts = model_args.mm_tunable_parts.split(",")
+            if "mm_mlp_adapter" in tunable_parts:
+                for p in model.get_model().mm_projector.parameters():
+                    p.requires_grad = True
+            if "mm_vision_resampler" in tunable_parts:
+                for p in model.get_model().vision_resampler.parameters():
+                    p.requires_grad = True
+            if "mm_vision_tower" in tunable_parts:
+                for name, param in model.named_parameters():
+                    if "vision_tower" in name and "lora" in name.lower():
+                        param.requires_grad_(True)
+            if "mm_language_model" in tunable_parts:
+                for name, param in model.named_parameters():
+                    if ("vision_tower" not in name and "mm_projector" not in name and "vision_resampler" not in name) and "lora" in name.lower():
+                        param.requires_grad_(True)
+        elif model_args.mm_tunable_parts is None:  # traditional way of deciding which part to train
             model.config.tune_mm_mlp_adapter = training_args.tune_mm_mlp_adapter = model_args.tune_mm_mlp_adapter
             model.config.tune_mm_vision_resampler = training_args.tune_mm_vision_resampler = model_args.tune_mm_vision_resampler
             if model_args.tune_mm_mlp_adapter or model_args.tune_mm_vision_resampler:

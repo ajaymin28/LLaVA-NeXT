@@ -727,21 +727,21 @@ if __name__=="__main__":
         try:
             outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_{version}.json"
             with open(outputfile, "w") as f:
-                json.dump(str(llava_response_json),f)
+                json.dump(llava_response_json, f, indent=4)
         except Exception as e:
             print(f"error saving file: {e}")
 
         try:
             outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_raw_response_{version}.json"
             with open(outputfile, "w") as f:
-                json.dump(str(llava_raw_response_json),f)
+                json.dump(llava_raw_response_json, f, indent=4)
         except Exception as e:
             print(f"error saving file: {e}")
 
         try:
             outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_{version}_eval_data.json"
             with open(outputfile, "w") as f:
-                json.dump(str(sg_eval_counts),f)
+                json.dump(sg_eval_counts, f, indent=4)
         except Exception as e:
             print(f"error saving file: {e}")
 

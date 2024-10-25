@@ -32,13 +32,13 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
-MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-ov_to_video_am9_vidvrd_v5_3_shuffled_split0_lora128_256"
+MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-vidvrd_v5_3_split0_olora32_64_llm"
 #PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-ov-si"  
 PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-si" 
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
-    # --mm_tunable_parts="mm_language_model" \
+    # --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
 # --mm_vision_tower_lr=2e-6 \
 # ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
 deepspeed --master_port 30000 \
@@ -50,7 +50,9 @@ deepspeed --master_port 30000 \
     --image_folder $IMAGE_FOLDER \
     --video_folder $VIDEO_FOLDER \
     --lora_enable True \
-    --lora_r 128 --lora_alpha 256 \
+    --mm_tunable_parts="mm_language_model" \
+    --lora_r 32 --lora_alpha 64 \
+    --init_lora_weights olora \
     --vision_tower ${VISION_MODEL_VERSION} \
     --mm_projector_lr 2e-5 \
     --mm_projector_type mlp2x_gelu \
