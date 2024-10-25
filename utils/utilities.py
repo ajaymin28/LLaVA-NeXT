@@ -4,11 +4,19 @@ import numpy as np
 import random
 import re
 import copy
+import os
+import pickle
 import cv2
+from tqdm import tqdm
+
 
 def chunk_list(list_, chunk_n):
     chunk_n = max(1, chunk_n)
     return (list_[i:i+chunk_n] for i in range(0, len(list_), chunk_n))
+
+def get_shuffled_list(input_list):
+    random.shuffle(input_list)
+    return input_list
 
 def get_varying_list(current_block_list, full_list, fix_size=100):
 	"""
@@ -1110,6 +1118,21 @@ prompts_list = {
       "What is the relationship between [{sub}:{obj}] in the video. Use only the provided lists for predicates. Predicates: {predicates}" # {} to be replaced by actual value
     ],
 
+    "AG_Prompt" : [
+      """
+      You are given a list of predefined objects={objects_list} and three different types of predicates list. 
+      1.Attention={attention_relations},
+      2.Spatial={spatial_relations} and 
+      3.Contacting={contacting_relations}
+
+      Attention relationship indicates whether the person is visually focused on the object in the scene.
+      Spatial relationship describes the object's position relative to the person within the scene.
+      Contacting relationship specifies the physical interaction or contact between the person and the object.
+
+      Your task is to identify relationships between person and predefined objects visible in the provided video.
+      """
+    ],
+
     # """
     # Generate frame-by-frame scene graph for the provided video
     #    Use the following list to select the object {}, 
@@ -1366,3 +1389,178 @@ def getVideoFrameCount(video_path):
     total_frames = int(cv2_vr.get(cv2.CAP_PROP_FRAME_COUNT))
     cv2_vr.release()
     return total_frames
+
+
+
+
+### Action Gnome helpers
+
+AG_relations = {
+"attention": ['unsure', 'not looking at', 'looking at'],
+"spatial": ['in front of', 'beneath', 'behind', 'on the side of', 'in', 'above'],
+"contacting": ['not contacting', 'sitting on', 'leaning on', 'other relationship', 'holding', 'touching', 'twisting', 'eating', 
+                'drinking from', 'standing on','wearing','lying on','carrying','wiping','covered by','writing on','have it on the back']
+}
+
+AG_Objects = ['table','chair','bag','doorway','medicine','cup/glass/bottle','food','floor','broom','shoe','clothes','door','doorknob','groceries',
+'closet/cabinet','laptop','bed','shelf','blanket','sandwich','refrigerator','vacuum','box','light','phone/camera','dish','paper/notebook',
+'mirror','book','sofa/couch','television','pillow','towel','picture','window']
+
+
+def load_AG_annotations(annotation_dir):
+    """
+    Taken from https://github.com/JingweiJ/ActionGenome/blob/master/tools/load_annotations.py#L5
+    """
+    with open(os.path.join(annotation_dir, 'object_bbox_and_relationship.pkl'), 'rb') as f:
+        object_anno = pickle.load(f)
+
+    with open(os.path.join(annotation_dir, 'person_bbox.pkl'), 'rb') as f:
+        person_anno = pickle.load(f)
+
+    frame_list = []
+    with open(os.path.join(annotation_dir, 'frame_list.txt'), 'r') as f:
+        for frame in f:
+            frame_list.append(frame.rstrip('\n'))
+
+    return object_anno, person_anno, frame_list
+
+
+def get_AG_annotations_framewise(AG_ANNOTATIONS_DIR,subset="train"):
+    """
+    Custom helper function for AG annotation
+
+    returns list of annotatation in list type [video_id, AG_annotations]
+    can be looped like: \n
+    
+        for video_id, video_annotations in get_AG_annotation(args): \n
+            for frame_id, triplets in video_annotations: \n
+
+    """
+
+    object_anno, person_anno, frame_list = load_AG_annotations(annotation_dir=AG_ANNOTATIONS_DIR)
+
+    assert set(object_anno.keys()) == set(person_anno.keys())
+    assert len(object_anno) == len(frame_list)
+
+    set_count = {"train": 0,"test": 0}
+    video_ids_by_set = { "train": [], "test": [] }
+
+    dataset_meta = {
+        "objects": [],
+        "relationships": {
+            "attention": [],
+            "spatial": [],
+            "contacting": []
+        }
+    }
+
+    # video2frames = {}
+    video2frames_full = {}
+    for path in frame_list:
+        video, frame = path.split('/')
+        if video not in video2frames_full:
+            video2frames_full[video] =[]
+        video2frames_full[video].append(path)
+    
+    # person data and object data by video frameid
+    video_frame_data = {}
+    # For each video, dump frames.
+    for v in tqdm(video2frames_full):
+        # curr_frame_dir = os.path.join(frame_dir, v)
+        if v not in video_frame_data.keys():
+            video_frame_data[v] = []
+        framesToKeep = video2frames_full[v]
+        for frameid in framesToKeep:
+            objects_annot = object_anno[frameid]
+            person_data = person_anno[frameid]
+            frameid = frameid.split("/")[-1]
+            video_frame_data[v].append([frameid,person_data,objects_annot])
+
+
+
+    # get dataset metadata, train/test split
+    for videoid, video_data in video_frame_data.items():
+        for video_annotation in video_data:
+            frameid, person_data,objects_annot = video_annotation
+
+            for objAnnot in objects_annot:
+                obj_class = objAnnot["class"]
+                # obj_bb =  objAnnot["bbox"]    # NOT USED
+
+                if obj_class not in dataset_meta["objects"]:
+                    dataset_meta["objects"].append(obj_class)
+
+                attention_relationship = objAnnot["attention_relationship"]
+                spatial_relationship = objAnnot["spatial_relationship"]
+                contacting_relationship = objAnnot["contacting_relationship"]
+
+                if attention_relationship!=None:
+                    for attn_rel in attention_relationship:
+                        if attn_rel not in dataset_meta["relationships"]["attention"]:
+                            dataset_meta["relationships"]["attention"].append(attn_rel)
+
+                if spatial_relationship!=None:
+                    for spa_rel in spatial_relationship:
+                        if spa_rel not in dataset_meta["relationships"]["spatial"]:
+                            dataset_meta["relationships"]["spatial"].append(spa_rel)
+
+                if contacting_relationship!=None:
+                    for cont_rel in contacting_relationship:
+                        if cont_rel not in dataset_meta["relationships"]["contacting"]:
+                            dataset_meta["relationships"]["contacting"].append(cont_rel)
+
+                metadata = objAnnot["metadata"]
+                data_split = metadata["set"]
+                if data_split=="train":
+                    set_count["train"] +=1
+                    if videoid not in video_ids_by_set["train"]:
+                        video_ids_by_set["train"].append(videoid)
+                else:
+                    set_count["test"] +=1
+                    if videoid not in video_ids_by_set["test"]:
+                        video_ids_by_set["test"].append(videoid)
+
+    assert len(video_ids_by_set["train"])==len(list(set(video_ids_by_set["train"])))
+    assert len(video_ids_by_set["test"])==len(list(set(video_ids_by_set["test"])))
+
+    # prepare annotations videoid->frames->triplets
+    overall_annotations = []
+    for video_id in tqdm(video_ids_by_set[subset]):
+        video_data = video_frame_data[video_id]
+
+        frame_block_triplets = []
+        for video_annotation in video_data:
+
+            frameid, person_data,objects_annot = video_annotation
+
+            frame_triplets = []
+            for objAnnot in objects_annot:
+                obj_class = objAnnot["class"]
+                obj_bb =  objAnnot["bbox"]   
+                metadata = objAnnot["metadata"]
+                if objAnnot["visible"]:
+                    attention_relationship = objAnnot["attention_relationship"]
+                    spatial_relationship = objAnnot["spatial_relationship"]
+                    contacting_relationship = objAnnot["contacting_relationship"]
+
+                    for attn_rel in attention_relationship:
+                        if "_" in attn_rel: attn_rel = attn_rel.replace("_", " ")
+                        trip = ["person", attn_rel, obj_class]
+                        frame_triplets.append(trip)
+
+                    for spa_rel in spatial_relationship:
+                        if "_" in spa_rel: spa_rel = spa_rel.replace("_", " ")
+                        trip = [obj_class, spa_rel, "person"]
+                        frame_triplets.append(trip)
+
+                    for cont_rel in contacting_relationship:
+                        if "_" in cont_rel: cont_rel = cont_rel.replace("_", " ")
+                        trip = ["person", cont_rel, obj_class]
+                        frame_triplets.append(trip)
+
+            
+            frame_block_triplets.append([frameid,frame_triplets])
+
+        overall_annotations.append([video_id, frame_block_triplets])
+
+    return overall_annotations,dataset_meta,video_frame_data
