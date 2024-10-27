@@ -13,7 +13,7 @@ Alternatively data can be downloaded from huggingface (wget is easier from HF)
 ### PVSG
 
 ```
-python /home/jbhol/dso/gits/VideoLLAVAGit/Video-LLaVA/data_prep/OPVSG_VIdeoLLAVA_Annot_chatgpt_v17.py --data_root=/home/jbhol/dso/gits/OpenPVSG/data/ --output_dir=out_dir --dataset=vidor
+python data_prep/OPVSG_VIdeoLLAVA_Annot_chatgpt_v17.py --data_root=/home/jbhol/dso/gits/OpenPVSG/data/ --output_dir=out_dir --dataset=vidor
 ```
 
 ### VidVRD
@@ -35,7 +35,7 @@ for frame 79 and 80 which remains, random sampling is done between frame-70 and 
 means add 79 and 80 frames first then random sample between frame-70 and frame-80 till we have 8 frames.
 
 
-python /home/jbhol/dso/gits/VideoLLAVAGit/Video-LLaVA/data_prep/prepare_video_llava_v6_newsampling.py
+python data_prep/prepare_video_llava_v6_newsampling.py
 
 ```
 
@@ -48,7 +48,7 @@ python /home/jbhol/dso/gits/VideoLLAVAGit/Video-LLaVA/data_prep/prepare_video_ll
 
 Note: value of shift_frames=5 can be changed and every_nth=4 can also be changed based on the requirements
 
-python /home/jbhol/dso/gits/VideoLLAVAGit/Video-LLaVA/data_prep/prepare_video_llava_v7_newsampling.py --data_root=/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/ --output_dir=/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/llava_annotations/v7_wotime --dataset=vidvrd --every_nth=4 --shift_frames=5
+python data_prep/prepare_video_llava_v7_newsampling.py --data_root=/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/ --output_dir=/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/llava_annotations/v7_wotime --dataset=vidvrd --every_nth=4 --shift_frames=5
 
 ```
 
@@ -62,5 +62,16 @@ With time blocks triplet_[Frame-start,Frame-end]
 
 Note: value of shift_frames=5 can be changed and every_nth=4 can also be changed based on the requirements
 
-python /home/jbhol/dso/gits/VideoLLAVAGit/Video-LLaVA/data_prep/prepare_video_llava_v7_newsampling_with_time.py --data_root=/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/ --output_dir=/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/llava_annotations/v7_with_time --dataset=vidvrd --every_nth=4 --shift_frames=5
+python data_prep/prepare_video_llava_v7_newsampling_with_time.py --data_root=/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/ --output_dir=/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/llava_annotations/v7_with_time --dataset=vidvrd --every_nth=4 --shift_frames=5
+```
+
+
+### ActionGNOME
+
+param: chunk_n -> Data will ne chunked to chunk_n samples in one json
+param: ag_annotations_dir -> path to action gnome annotations data
+param: video_root_path -> path to Charades videos
+
+```
+python data_prep/Prepare_VL_Annotations_AG.py --video_root_path=/home/jbhol/dso/gits/OpenPVSG/data/ --output_json_dir=out_dir --ag_annotations_dir=/path/to/ag/annotations/ --chunk_n=1000
 ```
