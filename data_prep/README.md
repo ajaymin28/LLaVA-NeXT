@@ -68,12 +68,12 @@ python data_prep/prepare_video_llava_v7_newsampling_with_time.py --data_root=/ho
 
 ### ActionGNOME
 
-#### Follow the steps of official [ActionGnome] (https://github.com/JingweiJ/ActionGenome) to downlod the data, then run below script to prepare annotations for VL.
+#### Follow the steps of official [ActionGnome](https://github.com/JingweiJ/ActionGenome) to downlod the data, then run below script to prepare annotations for VL.
 
 param: chunk_n -> Data will ne chunked to chunk_n samples in one json
 param: ag_annotations_dir -> path to action gnome annotations data
 param: video_root_path -> path to Charades videos
 
 ```
-python data_prep/Prepare_VL_Annotations_AG.py --video_root_path=/home/jbhol/dso/gits/OpenPVSG/data/ --output_json_dir=out_dir --ag_annotations_dir=/path/to/ag/annotations/ --chunk_n=1000
+python data_prep/Prepare_VL_Annotations_AG.py --video_root_path=/path/to/videos/ --output_json_dir=out_dir --ag_annotations_dir=/path/to/ag/annotations/ --chunk_n=1000
 ```
