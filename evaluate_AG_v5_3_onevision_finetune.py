@@ -259,6 +259,8 @@ def parse_args():
 
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--max-new-tokens", type=int, default=4000)
+    parser.add_argument("--start_index", type=int, default=0,required=False)
+    # parser.add_argument("--prev_eval_data", type=str, default="", required=False)
     return parser.parse_args()
 
 if __name__=="__main__":
@@ -293,7 +295,15 @@ if __name__=="__main__":
     }
 
     dataset_name = "ActionGnome"
+    dataset_name_to_save = dataset_name
     version = args.output_dir
+
+
+    continue_eval = False
+    if args.start_index!=0:
+        dataset_name_to_save += f"start_idx_{args.start_index}"
+        # if args.prev_eval_data=="":
+        #     raise Exception("Require prev_eval data path to continue previous eval")
 
     splits = ["test"]
     VIDEO_ROOT_PATH = "/groups/sernam/datasets/ActionGenome/Charades_v1_480"
@@ -337,6 +347,14 @@ if __name__=="__main__":
     }
 
     for val_id_idx,AG_Annotation in enumerate(AG_Annotations):
+
+        if val_id_idx<args.start_index:
+            ## To Continue unfinished job
+            pbar.n = val_id_idx
+            pbar.last_print_n = pbar.n
+            pbar.refresh()
+            continue
+
         video_id, video_annotations = AG_Annotation
         video_path = os.path.join(VIDEO_ROOT_PATH,video_id)
         if not os.path.exists(video_path):
@@ -363,6 +381,13 @@ if __name__=="__main__":
                 added_GT_triplets_frames = []
 
         
+        print(f"remaining frames: {len(frame_indices)}")
+        if len(frame_indices)>0:
+            ## add remaning frames
+            block_wise_GT_data.append({
+                "frame_idxes": frame_indices,
+                "triplets": added_GT_triplets_frames,
+            })
         block_metric = {
             "subject": {"precision": [], "recall": []},
             "object": {"precision": [], "recall": []},
@@ -548,7 +573,7 @@ if __name__=="__main__":
             pass
 
         try:
-            outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_{version}.json"
+            outputfile = f"{inference_output_dir}/{dataset_name_to_save}_inference_val.json"
             # outputfile = f"{inference_output_dir}/results.json"
             with open(outputfile, "w") as f:
                 json.dump(llava_response_json,f, indent=4)
@@ -556,15 +581,15 @@ if __name__=="__main__":
             print(f"error saving file: {e}")
 
         try:
-            outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_raw_response_{version}.json"
-            outputfile = f"{inference_output_dir}/results_raw_response.json"
+            outputfile = f"{inference_output_dir}/{dataset_name_to_save}_inference_val_raw_response.json"
+            # outputfile = f"{inference_output_dir}/results_raw_response.json"
             with open(outputfile, "w") as f:
                 json.dump(llava_raw_response_json,f, indent=4)
         except Exception as e:
             print(f"error saving file: {e}")
 
         try:
-            outputfile = f"{inference_output_dir}/results_eval_data.json"
+            outputfile = f"{inference_output_dir}/{dataset_name_to_save}_results_eval_data.json"
             with open(outputfile, "w") as f:
                 json.dump(sg_eval_counts,f, indent=4)
         except Exception as e:
