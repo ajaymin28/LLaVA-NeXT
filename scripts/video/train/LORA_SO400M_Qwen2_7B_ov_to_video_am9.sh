@@ -44,12 +44,13 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
-MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-AG_v5_3_split0_olora256_512_llm"
+MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-AG_v5_3_split0_23_all_mm_tune_olora256_512_llm"
 #PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-ov-si"  
 PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-si" 
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
+cd /home/jbhol/dso/gits/LLaVA-NeXT
 ## --mm_projector_lr 2e-5
 ##     --init_lora_weights olora \
 # ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
@@ -62,7 +63,7 @@ deepspeed --master_port 30000 \
     --image_folder $IMAGE_FOLDER \
     --video_folder $VIDEO_FOLDER \
     --lora_enable True \
-    --mm_tunable_parts="mm_language_model" \
+    --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
     --lora_r 256 --lora_alpha 512 \
     --init_lora_weights olora \
     --vision_tower ${VISION_MODEL_VERSION} \
