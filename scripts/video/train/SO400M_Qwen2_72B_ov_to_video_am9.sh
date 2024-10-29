@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Set up the data folder
-IMAGE_FOLDER="XXX"
-VIDEO_FOLDER="XXX"
-DATA_YAML="XXX" # e.g exp.yaml
+IMAGE_FOLDER="/root/jbhol/data/Charades_v1_480"
+VIDEO_FOLDER="/root/jbhol/data/Charades_v1_480"
+DATA_YAML="/root/jbhol/git/LLaVA-NeXT/scripts/video/train/exp.yaml" # e.g exp.yaml
 
 ############### Prepare Envs #################
-python3 -m pip install flash-attn --no-build-isolation
+# python3 -m pip install flash-attn --no-build-isolation
 alias python=python3
 ############### Show Envs ####################
 
@@ -14,19 +14,19 @@ nvidia-smi
 
 ################ Arnold Jobs ################
 
-LLM_VERSION="Qwen/Qwen2-72B-Instruct"
+LLM_VERSION="Qwen/Qwen2-7B-Instruct"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
 VISION_MODEL_VERSION="google/siglip-so400m-patch14-384"
 VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 
 
-BASE_RUN_NAME="llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-72B-Instruct-mlp2x_gelu-pretrain_blip558k_plain"
+BASE_RUN_NAME="llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-mlp2x_gelu-pretrain_blip558k_plain"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
-MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-ov_to_video_am9"
-PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-72b-ov-si"
+MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-ov_AG_v5_3_split023_fulltune"
+PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-si"
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
@@ -53,7 +53,7 @@ deepspeed --master_port 30000 \
     --mm_patch_merge_type spatial_unpad \
     --bf16 True \
     --run_name $MID_RUN_NAME \
-    --output_dir ./work_dirs/$MID_RUN_NAME \
+    --output_dir /dev/shm/work_dirs/$MID_RUN_NAME \
     --num_train_epochs 1 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 4 \
@@ -76,7 +76,7 @@ deepspeed --master_port 30000 \
     --torch_compile True \
     --torch_compile_backend "inductor" \
     --dataloader_drop_last True \
-    --frames_upbound 32 \
+    --frames_upbound 8 \
     --mm_newline_position grid \
     --add_time_instruction True \
     --force_sample True \

@@ -2,8 +2,12 @@ import glob
 import json
 import os
 import argparse
-from utils.utilities import chunk_list
+# from utils.utilities import chunk_list
 import random
+
+def chunk_list(list_, chunk_n):
+    chunk_n = max(1, chunk_n)
+    return (list_[i:i+chunk_n] for i in range(0, len(list_), chunk_n))
 
 random.seed(145)
 
@@ -18,7 +22,7 @@ def main(annot_path, new_annot_save_path, new_video_path_root, shuffle_data=Fals
             for annotIdx, annot in enumerate(jsonData):
                 videofileName = annot["video"].split("/")[-1]
                 newvideo_path = os.path.join(new_video_path_root, videofileName)
-                annot["video"] = newvideo_path
+                annot["video"] = videofileName.strip("\\")
                 if shuffle_data:
                     all_data.append(annot)
                 else:
