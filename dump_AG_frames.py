@@ -42,6 +42,13 @@ def parse_arguments():
         help="Directory containing ActionGenome annotation data."
     )
 
+    parser.add_argument(
+        "--n_workers",
+        type=int,
+        default=10,
+        help="Number of workers/Processes to use."
+    )
+
     return parser.parse_args()
 
 
@@ -108,7 +115,7 @@ if __name__=="__main__":
     AG_ANNOTATIONS_DIR = args.ag_annotations_dir
     # CHUNK_N = args.chunk_n # Q&A will be chunked into CHUNK_N parts
 
-    task_queue, result_queue, stop_event, workers = start_worker_pool(num_workers=10)
+    task_queue, result_queue, stop_event, workers = start_worker_pool(num_workers=args.n_workers)
 
 
     # os.makedirs(OUTPUT_JSON_DIR,exist_ok=True)
@@ -245,7 +252,7 @@ if __name__=="__main__":
 
 
     
-    for video_id, video_frame_block_data in tqdm(overall_annotations):
+    for video_id, video_frame_block_data in overall_annotations:
         annotation_string = ""
         added_frame_ids = []
 
@@ -272,11 +279,24 @@ if __name__=="__main__":
 
 
     
-    # if so many frames are there, wait before moving to next video.
+
+    Total = task_queue.qsize()
+    Processed = 0
+    pbar = tqdm(total=task_queue.qsize())
+    pbar.n = 0
+    pbar.last_print_n = 0
+    pbar.refresh()
+
     while task_queue.qsize()>0:
         time.sleep(1)
         if task_queue.qsize()==0:
             break
+
+        Processed = Total - task_queue.qsize()
+        pbar.n = Processed
+        pbar.last_print_n = Processed
+        pbar.refresh()
+    
 
     stop_worker_pool(stop_event, workers)
 
