@@ -306,9 +306,8 @@ if __name__=="__main__":
         #     raise Exception("Require prev_eval data path to continue previous eval")
 
     splits = ["test"]
-    VIDEO_ROOT_PATH = "/groups/sernam/datasets/ActionGenome/Charades_v1_480"
-    # OUTPUT_JSON_DIR = "/home/jbhol/dso/gits/ActionGenome/inference/AG_llava_annotations_v5_3"
-    AG_ANNOTATIONS_DIR = "/groups/sernam/datasets/ActionGenome/ActionGenome/annot_data"
+    VIDEO_ROOT_PATH = "/groups/sernam/datasets/ActionGenome/ActionGenome/videos"
+    AG_ANNOTATIONS_DIR = "/groups/sernam/datasets/ActionGenome/ActionGenome/annotations"
     CHUNK_N = 1000 # Q&A will be chunked into CHUNK_N parts
     AG_Annotations,dataset_meta,video_frame_data = get_AG_annotations_framewise(AG_ANNOTATIONS_DIR=AG_ANNOTATIONS_DIR, 
                                                                                 subset=splits[0])
