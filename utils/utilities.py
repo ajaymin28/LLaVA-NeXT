@@ -1129,6 +1129,38 @@ prompts_list = {
       """
     ],
 
+    "AG_Prompt_sg_tagging" : [
+      """
+      You are given three different types of predefined predicates list. 
+      1.Attention={attention_relations},
+      2.Spatial={spatial_relations} and 
+      3.Contacting={contacting_relations}
+
+      Attention relationship indicates whether the person is visually focused on the object in the scene.
+      Spatial relationship describes the object's position relative to the p+
+      erson within the scene.
+      Contacting relationship specifies the physical interaction or contact between the person and the object.
+
+      When given object pairs with bounding box location [xmin,ymin,xmax,ymax] in the video, the task is to identify relationships between them in the provided video from the predefined list.
+      For each pair, all three relationships(i.e. attention,spatial and contacting) should be given.
+      """
+    ],
+
+    "AG_Prompt_sg_with_bb" : [
+      """
+      You are given a list of predefined objects={objects_list} and three different types of predicates list. 
+      1.Attention={attention_relations},
+      2.Spatial={spatial_relations} and 
+      3.Contacting={contacting_relations}
+
+      Attention relationship indicates whether the person is visually focused on the object in the scene.
+      Spatial relationship describes the object's position relative to the person within the scene.
+      Contacting relationship specifies the physical interaction or contact between the person and the object.
+
+      Your task is to identify relationships between person and predefined objects visible in the provided video along with object locations.
+      """
+    ],
+
     # """
     # Generate frame-by-frame scene graph for the provided video
     #    Use the following list to select the object {}, 
