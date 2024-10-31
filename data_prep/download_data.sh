@@ -1,6 +1,6 @@
 #!/bin/bash
 
-WORK_DIR = /root/jbhoi
+WORK_DIR=/root/jbhoi
 
 mkdir -p $WORK_DIR
 cd $WORK_DIR
@@ -26,6 +26,7 @@ rm -rf videos/vidvrd-videos-part1
 unzip vidvrd-videos-part2.zip -d videos
 mv videos/vidvrd-videos-part2/*.mp4 videos
 rm -rf videos/vidvrd-videos-part2
+
 
 # VRDDATA_VIDEOS_PATH = $WORK_DIR/gits/VRDFormer_VRD/data/vidvrd/videos
 
