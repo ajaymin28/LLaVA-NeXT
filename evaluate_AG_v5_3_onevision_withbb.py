@@ -4,7 +4,7 @@ import glob
 import numpy as np
 import time
 from utils.utilities import eval_tagging_scores
-from utils.utilities import pre_clean_prediction_data_v18
+from utils.utilities import pre_clean_prediction_data_v18_withbb
 from utils.utilities import calculate_accuracy_varying_lengths, remove_ids
 from utils.utilities import getRandomPrompt, SGSpecialTokens
 from utils.utilities import get_AG_annotations_framewise, get_shuffled_list
@@ -31,6 +31,13 @@ import pickle
 import json
 from json import encoder
 encoder.FLOAT_REPR = lambda o: format(o, '.2f')
+
+class NumpyFloatValuesEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.float32):
+            return float(obj)
+        return json.JSONEncoder.default(self, obj)
+
 import random
 from typing import Dict
 from utils.utilities import get_varying_list
@@ -321,7 +328,7 @@ if __name__=="__main__":
 
     sg_eval_counts["subsets"] = splits
 
-    AG_Prompt = getRandomPrompt(key='AG_Prompt', static=True)
+    AG_Prompt = getRandomPrompt(key='AG_Prompt_sg_with_bb', static=True)
     AG_Prompt = AG_Prompt.replace("{objects_list}",  ",".join(get_shuffled_list(AG_Objects)) )
     AG_Prompt = AG_Prompt.replace("{spatial_relations}", ",".join(get_shuffled_list(AG_relations["spatial"])))
     AG_Prompt = AG_Prompt.replace("{contacting_relations}", ",".join(get_shuffled_list(AG_relations["contacting"])))
@@ -344,6 +351,8 @@ if __name__=="__main__":
         "predicate": {"precision": [], "recall": []},
         "triplet": {"precision": [], "recall": []} 
     }
+
+    import pdb
 
     for val_id_idx,AG_Annotation in enumerate(AG_Annotations):
 
@@ -369,6 +378,10 @@ if __name__=="__main__":
             frame_int_idx = int(frame_id.split(".")[0])
             # print(frame_id, frame_int_idx)
             added_GT_triplets_frames.append(frame_triplets)
+
+            # import pdb
+            # pdb.set_trace()
+
             added_GT_triplets_bb.append(list(frame_triplets_bb))
             frame_indices.append(frame_int_idx)
 
@@ -412,6 +425,7 @@ if __name__=="__main__":
             
             Block_frame_ids = block_data["frame_idxes"]
             Block_GT_Triplets = block_data["triplets"]
+            Block_GT_Triplets_BB = block_data["triplets_bb"]
 
             if video_id not in llava_response_json:
                 llava_response_json[video_id] = {}
@@ -426,20 +440,23 @@ if __name__=="__main__":
             args.video_path = video_path
             set_video(args=args, video_frame_index=Block_frame_ids)
             outputs_unclean = get_model_output(prompt=AG_Prompt,file=file,batch_of_frames=Block_frame_ids)
-            outputs = pre_clean_prediction_data_v18(outputs_unclean["triplets"])
+            outputs = pre_clean_prediction_data_v18_withbb(outputs_unclean["triplets"])
 
 
             llava_response_json[video_id][frame_block_index] = {
                 # "objects_list": outputs["objects_list"],
-                "triplets": outputs,
+                "triplets": outputs["triplets"],
+                "triplets_bb": outputs["triplets_bb"],
                 "frames": Block_frame_ids,
-                "GT_triplets": Block_GT_Triplets
+                "GT_triplets": Block_GT_Triplets,
+                "GT_triplets_BB": Block_GT_Triplets_BB
             }
 
             llava_raw_response_json[video_id][frame_block_index] = {
                 "frames": Block_frame_ids,
                 "GT_triplets": Block_GT_Triplets,
-                "raw": outputs_unclean["triplets"],
+                "GT_triplets_BB": Block_GT_Triplets_BB,
+                "raw": outputs_unclean,
                 "Prompt": AG_Prompt,
                 "cleaned_output": outputs
             }
@@ -447,7 +464,7 @@ if __name__=="__main__":
 
             try:
                 Block_GT_triplets_woids = remove_ids(Block_GT_Triplets,version="v2_1",remove_indexes=True)
-                Block_predicated_triplets_woids = remove_ids(outputs,version="v2_1",remove_indexes=True)
+                Block_predicated_triplets_woids = remove_ids(outputs["triplets"],version="v2_1",remove_indexes=True)
             except Exception as e:
                 print(f"error removing ids {e}")
                 pass
@@ -463,10 +480,21 @@ if __name__=="__main__":
 
                 frame_GT_triplets = GT_tripdata
                 frame_pred_triplets = []
-
+                frame_pred_triplets_bb = []
+                frame_GT_triplets_bb = Block_GT_Triplets_BB[fidx]
+                
                 try:frame_pred_triplets = Block_predicated_triplets_woids[fidx]
                 except Exception as e:
                     pass
+
+                try:frame_pred_triplets_bb = outputs["triplets_bb"][fidx]
+                except Exception as e:
+                    pass
+
+                # import pdb
+                # pdb.set_trace()
+                # TODO match pred bbox with GT box
+
 
                 gt_relations = [] # {"triplet": ['adult', 'sitting', 'sofa'], "score": 1.0},
                 pred_relations = [] # {"triplet": ['adult', 'sitting', 'sofa'], "score": 1.0},
@@ -580,25 +608,25 @@ if __name__=="__main__":
             pass
 
         try:
-            outputfile = f"{inference_output_dir}/{dataset_name_to_save}_inference_val.json"
+            outputfile = f"{inference_output_dir}/{val_id_idx}_{dataset_name_to_save}_inference_val.json"
             # outputfile = f"{inference_output_dir}/results.json"
             with open(outputfile, "w") as f:
-                json.dump(llava_response_json,f, indent=4)
+                json.dump(llava_response_json,f, indent=4,cls=NumpyFloatValuesEncoder)
         except Exception as e:
             print(f"error saving file: {e}")
 
         try:
-            outputfile = f"{inference_output_dir}/{dataset_name_to_save}_inference_val_raw_response.json"
+            outputfile = f"{inference_output_dir}/{val_id_idx}_{dataset_name_to_save}_inference_val_raw_response.json"
             # outputfile = f"{inference_output_dir}/results_raw_response.json"
             with open(outputfile, "w") as f:
-                json.dump(llava_raw_response_json,f, indent=4)
+                json.dump(llava_raw_response_json,f, indent=4,cls=NumpyFloatValuesEncoder)
         except Exception as e:
             print(f"error saving file: {e}")
 
         try:
-            outputfile = f"{inference_output_dir}/{dataset_name_to_save}_results_eval_data.json"
+            outputfile = f"{inference_output_dir}/{val_id_idx}_{dataset_name_to_save}_results_eval_data.json"
             with open(outputfile, "w") as f:
-                json.dump(sg_eval_counts,f, indent=4)
+                json.dump(sg_eval_counts,f, indent=4,cls=NumpyFloatValuesEncoder)
         except Exception as e:
             print(f"error saving file: {e}")
 

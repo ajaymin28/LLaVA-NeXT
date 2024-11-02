@@ -1,7 +1,8 @@
 #!/bin/bash
 
-DOWN_MODEL_PATH=$1
-OUTPUT_DIR=$2
+DOWN_MODEL_PATH=$1 ##url="https://huggingface.co/ajaymin28/vl-sg-AG-fulltune/resolve/main/llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-ov_AG_v5_3_split0_bash_fulltune"
+folder_name=$(basename "$DOWN_MODEL_PATH")
+OUTPUT_DIR="$2/$folder_name"
 
 mkdir -p $OUTPUT_DIR
 

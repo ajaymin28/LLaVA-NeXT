@@ -950,7 +950,84 @@ def pre_clean_prediction_data_v7_with_time(model_response):
     
     return frame_triplets, frame_triplets_time_windows
 
+def pre_clean_prediction_data_v18_withbb(model_response):
+    """
+    0. #frameid[person_[0.28, 0.96, 0.72, 0.96]:not looking at:mirror_[0.0, 0.96, 0.08, 0.96]];
+    1. [person_[0.28, 0.96, 0.72, 0.96]:not looking at:mirror_[0.0, 0.96, 0.08, 0.96]]
+    2. [person_[0.28, 0.96, 0.72, 0.96],  not looking at,  mirror_[0.0, 0.96, 0.08, 0.96]
+    3. person, [0.28, 0.96, 0.72, 0.96]  
+    3. not looking at, 
+    3. mirror,[0.0, 0.96, 0.08, 0.96]
+    """
+
+    parsed_data = {
+        "triplets": [],
+        "triplets_bb": []
+    }
+
+    frame_triplets = []
+    prediction_data = model_response
+    prediction_data = prediction_data.strip("</s>")
+    framewiseTriplets = prediction_data.split(f"{SGSpecialTokens.VIDEO_FRAME_ID}")[1:]
+
+    special_tokens = SGSpecialTokens.get_tokens()
+    for cnt_idx, ftriplets in enumerate(framewiseTriplets):
+        if cnt_idx>7:
+            break
+
+        for spetok in special_tokens:
+            ftriplets = ftriplets.replace(f"{spetok}", "")
+
+        # ftriplets = ftriplets.replace(f":", ",")
+        ftriplets = ftriplets.split(";")
+
+        current_frame_triplets = []
+        current_frame_triplets_bb = []
+        for ftr in ftriplets:
+
+            ftr_temp = ftr.split(":")
+            if len(ftr_temp)!=3:
+                print(f"invalid triplet length : {ftr_temp}")
+                continue
+            
+            subject_, predicate_, object_ = ftr_temp # [person_[0.28, 0.96, 0.72, 0.96],  not looking at,  mirror_[0.0, 0.96, 0.08, 0.96]
+            subject_ = subject_.split("_")
+            if len(subject_)!=2:
+                print(f"invalid subject token: {subject_}")
+                continue
+            
+            subject_name, subject_bb = subject_[0],subject_[1]
+            subject_name = subject_name.strip("[").strip("]")
+
+            subject_bb = subject_bb.strip("[").strip("]")
+            subject_bb = eval(subject_bb)
+
+            object_ = object_.split("_")
+            if len(object_)!=2:
+                print(f"invalid object_ token: {object_}")
+                continue
+
+            object_name, object_bb = object_[0],object_[1]
+            object_name = object_name.strip("[").strip("]")
+            object_bb = object_bb.strip("[").strip("]")
+            try:
+                object_bb = eval(object_bb)
+            except Exception as e:
+                print(f"error parsing bounding box: {object_bb}")
+
+            current_frame_triplets.append([subject_name,predicate_,object_name])
+            current_frame_triplets_bb.append([subject_bb,object_bb])
+        # frame_triplets.append([current_frame_triplets,current_frame_triplets_bb])
+
+        parsed_data["triplets"].append(current_frame_triplets)
+        parsed_data["triplets_bb"].append(current_frame_triplets_bb)
+    
+    return parsed_data
+
 def pre_clean_prediction_data_v18(model_response):
+    """
+    #frameid [subject, predicate,object];.. #frameid
+    """
     frame_triplets = []
     prediction_data = model_response
     prediction_data = prediction_data.strip("</s>")
@@ -1509,11 +1586,11 @@ def get_AG_annotations_framewise(AG_ANNOTATIONS_DIR,subset="train"):
     # get dataset metadata, train/test split
     for videoid, video_data in video_frame_data.items():
         for video_annotation in video_data:
-            frameid, person_data,objects_annot = video_annotation
+            frameid,person_data,objects_annot = video_annotation
 
             for objAnnot in objects_annot:
                 obj_class = objAnnot["class"]
-                # obj_bb =  objAnnot["bbox"]    # NOT USED
+                obj_bb =  objAnnot["bbox"]    # NOT USED
 
                 if obj_class not in dataset_meta["objects"]:
                     dataset_meta["objects"].append(obj_class)
@@ -1562,11 +1639,25 @@ def get_AG_annotations_framewise(AG_ANNOTATIONS_DIR,subset="train"):
             frameid, person_data,objects_annot = video_annotation
 
             frame_triplets = []
+            frame_triplets_bb = []
             for objAnnot in objects_annot:
                 obj_class = objAnnot["class"]
-                obj_bb =  objAnnot["bbox"]   
                 metadata = objAnnot["metadata"]
                 if objAnnot["visible"]:
+
+                    obj_bb =  list(objAnnot["bbox"])
+
+                    frame_w, frame_h = person_data['bbox_size']
+                    unnorm_person_bb = person_data["bbox"]
+                    if len(unnorm_person_bb)>0:
+                        unnorm_person_bb = list(unnorm_person_bb[0])
+                    else:
+                        unnorm_person_bb = []
+
+                    if len(unnorm_person_bb)==0 or obj_bb==None:
+                        continue
+                    
+
                     attention_relationship = objAnnot["attention_relationship"]
                     spatial_relationship = objAnnot["spatial_relationship"]
                     contacting_relationship = objAnnot["contacting_relationship"]
@@ -1575,19 +1666,22 @@ def get_AG_annotations_framewise(AG_ANNOTATIONS_DIR,subset="train"):
                         if "_" in attn_rel: attn_rel = attn_rel.replace("_", " ")
                         trip = ["person", attn_rel, obj_class]
                         frame_triplets.append(trip)
+                        frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
 
                     for spa_rel in spatial_relationship:
                         if "_" in spa_rel: spa_rel = spa_rel.replace("_", " ")
                         trip = [obj_class, spa_rel, "person"]
                         frame_triplets.append(trip)
+                        frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
 
                     for cont_rel in contacting_relationship:
                         if "_" in cont_rel: cont_rel = cont_rel.replace("_", " ")
                         trip = ["person", cont_rel, obj_class]
                         frame_triplets.append(trip)
+                        frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
 
             
-            frame_block_triplets.append([frameid,frame_triplets])
+            frame_block_triplets.append([frameid,frame_triplets,frame_triplets_bb])
 
         overall_annotations.append([video_id, frame_block_triplets])
 
