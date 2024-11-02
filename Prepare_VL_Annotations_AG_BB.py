@@ -1,4 +1,4 @@
-from utils.utilities import load_annotations
+from utils.utilities import load_AG_annotations
 from utils.utilities import getConvBlock, getPromptTemplate, getRandomPrompt, get_shuffled_list, chunk_list
 import json
 from tqdm import tqdm
@@ -14,21 +14,21 @@ def parse_arguments():
     parser.add_argument(
         "--video_root_path",
         type=str,
-        default="/groups/sernam/datasets/ActionGenome/Charades_v1_480",
+        default="/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
         help="Root path to the video files."
     )
     
     parser.add_argument(
         "--output_json_dir",
         type=str,
-        default="/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations_v5_3",
+        default="/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations_v5_3_with_bb",
         help="Directory to save the output JSON annotations."
     )
     
     parser.add_argument(
         "--ag_annotations_dir",
         type=str,
-        default="/groups/sernam/datasets/ActionGenome/ActionGenome/annot_data",
+        default="/groups/sernam/datasets/ActionGenome/ActionGenome/annotations",
         help="Directory containing ActionGenome annotation data."
     )
     
@@ -40,6 +40,14 @@ def parse_arguments():
     )
 
     return parser.parse_args()
+
+def norm_bb(bbox, height, width):
+    x1,y1,x2,y2 = bbox
+    x1 = round((x1/width),2)
+    y1 = round((y1/height),2)
+    x2 = round((x2/width),2)
+    y2 = round((y2/height),2)
+    return [x1,y2,x2,y2]
 
 if __name__=="__main__":
 
@@ -56,7 +64,7 @@ if __name__=="__main__":
 
     os.makedirs(OUTPUT_JSON_DIR,exist_ok=True)
 
-    object_anno, person_anno, frame_list = load_annotations(annotation_dir=AG_ANNOTATIONS_DIR)
+    object_anno, person_anno, frame_list = load_AG_annotations(annotation_dir=AG_ANNOTATIONS_DIR)
 
     assert set(object_anno.keys()) == set(person_anno.keys())
     assert len(object_anno) == len(frame_list)
@@ -168,13 +176,28 @@ if __name__=="__main__":
         for video_annotation in video_data:
 
             frameid, person_data,objects_annot = video_annotation
-
             frame_triplets = []
+            frame_triplets_bb = []
             for objAnnot in objects_annot:
                 obj_class = objAnnot["class"]
                 obj_bb =  objAnnot["bbox"]   
                 metadata = objAnnot["metadata"]
                 if objAnnot["visible"]:
+
+                    # import pdb
+                    # pdb.set_trace()
+
+                    frame_w, frame_h = person_data['bbox_size']
+                    unnorm_person_bb = person_data["bbox"]
+                    if len(unnorm_person_bb)>0:
+                        unnorm_person_bb = unnorm_person_bb[0]
+                    else:
+                        unnorm_person_bb = []
+
+                    if len(unnorm_person_bb)==0 or obj_bb==None:
+                        continue
+                    
+
                     attention_relationship = objAnnot["attention_relationship"]
                     spatial_relationship = objAnnot["spatial_relationship"]
                     contacting_relationship = objAnnot["contacting_relationship"]
@@ -183,19 +206,22 @@ if __name__=="__main__":
                         if "_" in attn_rel: attn_rel = attn_rel.replace("_", " ")
                         trip = ["person", attn_rel, obj_class]
                         frame_triplets.append(trip)
+                        frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
 
                     for spa_rel in spatial_relationship:
                         if "_" in spa_rel: spa_rel = spa_rel.replace("_", " ")
                         trip = [obj_class, spa_rel, "person"]
                         frame_triplets.append(trip)
+                        frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
 
                     for cont_rel in contacting_relationship:
                         if "_" in cont_rel: cont_rel = cont_rel.replace("_", " ")
                         trip = ["person", cont_rel, obj_class]
                         frame_triplets.append(trip)
+                        frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
 
             
-            frame_block_triplets.append([frameid,frame_triplets])
+            frame_block_triplets.append([frameid,frame_triplets,frame_triplets_bb])
 
         overall_annotations.append([video_id, frame_block_triplets])
 
@@ -205,19 +231,29 @@ if __name__=="__main__":
         added_frame_ids = []
 
         video_path = os.path.join(VIDEO_ROOT_PATH,video_id)
+        # video_path = video_id
         if not os.path.exists(video_path):
             print(f"[ERROR] video doesnt exist at: {video_path}")
+            video_path = video_id
             raise FileNotFoundError()
 
-        for frame_id, frame_triplets in video_frame_block_data:
+        for frame_id, frame_triplets,frame_triplets_bb in video_frame_block_data:
             frame_int_idx = int(frame_id.split(".")[0])
             # print(frame_id, frame_int_idx)
+            
 
             annotation_string +="#frameid"
 
-            for triplet in frame_triplets:
+            for trip_idx, triplet in enumerate(frame_triplets):
+                sub_bb, obj_bb, frame_size = frame_triplets_bb[trip_idx]
+                (frame_h,frame_w) = frame_size
+                # import pdb
+                # pdb.set_trace()
+                sub_bb = norm_bb(bbox=sub_bb,height=frame_h,width=frame_w)
+                obj_bb = norm_bb(bbox=obj_bb,height=frame_h,width=frame_w)
+
                 s,p,o = triplet
-                annotation_string += f"[{s}:{p}:{o}];"
+                annotation_string += f"[{s}_{sub_bb}:{p}:{o}_{obj_bb}];"
 
             added_frame_ids.append(frame_int_idx)
 
@@ -228,7 +264,7 @@ if __name__=="__main__":
 
                 add_video_token = True
 
-                AG_Prompt = getRandomPrompt(key='AG_Prompt', static=True)
+                AG_Prompt = getRandomPrompt(key='AG_Prompt_sg_with_bb', static=True)
                 AG_Prompt = AG_Prompt.replace("{objects_list}",  ",".join(get_shuffled_list(AG_Objects)) )
                 AG_Prompt = AG_Prompt.replace("{spatial_relations}", ",".join(get_shuffled_list(AG_relations["spatial"])))
                 AG_Prompt = AG_Prompt.replace("{contacting_relations}", ",".join(get_shuffled_list(AG_relations["contacting"])))

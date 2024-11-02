@@ -1157,7 +1157,7 @@ prompts_list = {
       Spatial relationship describes the object's position relative to the person within the scene.
       Contacting relationship specifies the physical interaction or contact between the person and the object.
 
-      Your task is to identify relationships between person and predefined objects visible in the provided video along with object locations.
+      Your task is to identify relationships between person and objects visible in the provided video frame-by-frame from the predefined list along with their bounding box locations in format [xmin,ymin,xmax,ymax].
       """
     ],
 
