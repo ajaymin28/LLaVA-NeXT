@@ -1,0 +1,23 @@
+{
+    "action_genome_v5_3_split0": {
+      "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+      "annotation": "data/ActionGenome/AG_internvl_annotations_v5_3/videochatgpt_tune_AG_part0.jsonl",
+      "data_augment": false,
+      "repeat_time": 1,
+      "length": 1000
+    },
+    "action_genome_v5_3_split1": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "data/ActionGenome/AG_internvl_annotations_v5_3/videochatgpt_tune_AG_part1.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split2": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "data/ActionGenome/AG_internvl_annotations_v5_3/videochatgpt_tune_AG_part2.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+      }
+  }
