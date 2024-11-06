@@ -5,6 +5,7 @@ import numpy as np
 import time
 from utils.utilities import eval_tagging_scores
 from utils.utilities import pre_clean_prediction_data_v18_withbb
+from utils.utilities import get_substring_between
 from utils.utilities import calculate_accuracy_varying_lengths, remove_ids
 from utils.utilities import getRandomPrompt, SGSpecialTokens
 from utils.utilities import get_AG_annotations_framewise, get_shuffled_list
@@ -328,6 +329,8 @@ if __name__=="__main__":
 
     sg_eval_counts["subsets"] = splits
 
+    # AG_Prompt = getRandomPrompt(key='AG_Prompt_bbonly', static=True)
+    
     AG_Prompt = getRandomPrompt(key='AG_Prompt_sg_with_bb', static=True)
     AG_Prompt = AG_Prompt.replace("{objects_list}",  ",".join(get_shuffled_list(AG_Objects)) )
     AG_Prompt = AG_Prompt.replace("{spatial_relations}", ",".join(get_shuffled_list(AG_relations["spatial"])))
@@ -440,6 +443,11 @@ if __name__=="__main__":
             args.video_path = video_path
             set_video(args=args, video_frame_index=Block_frame_ids)
             outputs_unclean = get_model_output(prompt=AG_Prompt,file=file,batch_of_frames=Block_frame_ids)
+
+            # import pdb
+            # pdb.set_trace()
+
+
             outputs = pre_clean_prediction_data_v18_withbb(outputs_unclean["triplets"])
 
 

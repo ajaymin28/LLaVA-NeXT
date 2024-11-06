@@ -1,10 +1,12 @@
 from utils.utilities import load_AG_annotations
 from utils.utilities import getConvBlock, getPromptTemplate, getRandomPrompt, get_shuffled_list, chunk_list
+from utils.utilities import getbbcenter
 import json
 from tqdm import tqdm
 import os
 import random
 import argparse
+import numpy as np
 random.seed(145)
 
 
@@ -21,7 +23,7 @@ def parse_arguments():
     parser.add_argument(
         "--output_json_dir",
         type=str,
-        default="/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations_v5_3_with_only_bb",
+        default="/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations_v5_3_with_bb_temporalCenterPoint",
         help="Directory to save the output JSON annotations."
     )
     
@@ -182,45 +184,53 @@ if __name__=="__main__":
                 obj_class = objAnnot["class"]
                   
                 metadata = objAnnot["metadata"]
+                frame_w, frame_h = person_data['bbox_size']
+                unnorm_person_bb = person_data["bbox"]
+
+                if len(unnorm_person_bb)>0:
+                    unnorm_person_bb = list(unnorm_person_bb[0])
+                else:
+                    unnorm_person_bb = []
+                if len(unnorm_person_bb)==0 or obj_bb==None:
+                    continue
+
                 if objAnnot["visible"]:
-
                     obj_bb =  list(objAnnot["bbox"]) 
+                else:
+                    obj_bb = []
 
-                    # import pdb
-                    # pdb.set_trace()
 
-                    frame_w, frame_h = person_data['bbox_size']
-                    unnorm_person_bb = person_data["bbox"]
-                    if len(unnorm_person_bb)>0:
-                        unnorm_person_bb = list(unnorm_person_bb[0])
-                    else:
-                        unnorm_person_bb = []
-
-                    if len(unnorm_person_bb)==0 or obj_bb==None:
-                        continue
-                    
-
+                try:
                     attention_relationship = objAnnot["attention_relationship"]
-                    spatial_relationship = objAnnot["spatial_relationship"]
-                    contacting_relationship = objAnnot["contacting_relationship"]
-
                     for attn_rel in attention_relationship:
                         if "_" in attn_rel: attn_rel = attn_rel.replace("_", " ")
                         trip = ["person", attn_rel, obj_class]
                         frame_triplets.append(trip)
                         frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
+                except Exception as e:
+                    pass
 
+                    
+                try:
+                    spatial_relationship = objAnnot["spatial_relationship"]
                     for spa_rel in spatial_relationship:
                         if "_" in spa_rel: spa_rel = spa_rel.replace("_", " ")
                         trip = [obj_class, spa_rel, "person"]
                         frame_triplets.append(trip)
                         frame_triplets_bb.append([obj_bb,unnorm_person_bb,(frame_h,frame_w)])
+                except Exception as e:
+                    pass
 
+
+                try:
+                    contacting_relationship = objAnnot["contacting_relationship"]
                     for cont_rel in contacting_relationship:
                         if "_" in cont_rel: cont_rel = cont_rel.replace("_", " ")
                         trip = ["person", cont_rel, obj_class]
                         frame_triplets.append(trip)
                         frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
+                except Exception as e:
+                    pass
 
             
             frame_block_triplets.append([frameid,frame_triplets,frame_triplets_bb])
@@ -229,9 +239,11 @@ if __name__=="__main__":
 
 
     for video_id, video_frame_block_data in tqdm(overall_annotations):
-        annotation_string = {}
-        # annotation_bb_string = ""
+        annotation_string = ""
+        bounding_box_string = {}
         added_frame_ids = []
+        frame_counter = 0
+        added_object_entities = []
 
         video_path = os.path.join(VIDEO_ROOT_PATH,video_id)
         # video_path = video_id
@@ -240,54 +252,87 @@ if __name__=="__main__":
             video_path = video_id
             raise FileNotFoundError()
 
-        frame_counter = 0
-        added_object_entities = []
+        
         for frame_id, frame_triplets,frame_triplets_bb in video_frame_block_data:
             frame_int_idx = int(frame_id.split(".")[0])
             # print(frame_id, frame_int_idx)
 
+            if len(frame_triplets)==0:
+                continue
+
             # import pdb
             # pdb.set_trace()
 
-            # annotation_string +="#frameid"
+            annotation_string +="#frameid"
             # annotation_bb_string +="#frameid"
-            if f"frame-{frame_counter}" not in annotation_string:
-                annotation_string[f"frame-{frame_counter}"] = []
+            # if f"frame-{frame_counter}" not in annotation_string:
+            #     annotation_string[f"frame-{frame_counter}"] = []
 
             for trip_idx, triplet in enumerate(frame_triplets):
                 sub_bb, obj_bb, frame_size = frame_triplets_bb[trip_idx]
                 (frame_h,frame_w) = frame_size
                 # import pdb
                 # pdb.set_trace()
-                sub_bb = norm_bb(bbox=sub_bb,height=frame_h,width=frame_w)
-                obj_bb = norm_bb(bbox=obj_bb,height=frame_h,width=frame_w)
+                
+
+                sub_bb_center = getbbcenter(bb=sub_bb, decimal_points=3, norm_center=True,frame_size=[frame_h,frame_w])
+                obj_bb_center = getbbcenter(bb=obj_bb, decimal_points=3, norm_center=True,frame_size=[frame_h,frame_w])
+
+                # sub_bb = norm_bb(bbox=sub_bb,height=frame_h,width=frame_w)
+                # obj_bb = norm_bb(bbox=obj_bb,height=frame_h,width=frame_w)
+                
 
                 s,p,o = triplet
                 # annotation_string += f"[{s}_{sub_bb}:{p}:{o}_{obj_bb}];"
                 # annotation_string += f"[{s},{sub_bb}];[{o},{obj_bb}];"
                 
                 
-                entity = {s : sub_bb}
-                if entity not in annotation_string[f"frame-{frame_counter}"]:
-                    annotation_string[f"frame-{frame_counter}"].append({s : sub_bb})
-                entity = {o : obj_bb}
-                if entity not in annotation_string[f"frame-{frame_counter}"]:
-                    annotation_string[f"frame-{frame_counter}"].append({o : obj_bb})
-                # annotation_string += """{""" + f"""'triplet': ['{s}','{p}','{o}'], 'bounding_box': [{sub_bb}, {obj_bb}] """ + """};"""
+                if s not in added_object_entities:
+                    if len(sub_bb)>0:
+                        if f"frame-{frame_counter}" not in bounding_box_string.keys():
+                            bounding_box_string[f"frame-{frame_counter}"] = []
+                        bounding_box_string[f"frame-{frame_counter}"].append({s : sub_bb_center})
+                        added_object_entities.append(s)
+
+                if o not in added_object_entities:
+                    if len(obj_bb)>0:
+                        if f"frame-{frame_counter}" not in bounding_box_string.keys():
+                            bounding_box_string[f"frame-{frame_counter}"] = []
+                        bounding_box_string[f"frame-{frame_counter}"].append({o : obj_bb_center})
+                        added_object_entities.append(o)
+
+                # import pdb
+                # pdb.set_trace()
+
+                annotation_string += f"[{s}:{p}:{o}];"
 
             added_frame_ids.append(frame_int_idx)
             frame_counter +=1
 
             if len(added_frame_ids)>=8:
+
+                if len(bounding_box_string.keys())==0:
+                    # "No bounding box for all 8 frames"
+                    print(f" Frame ids {added_frame_ids} dont have any boxes")
+                    import pdb
+                    pdb.set_trace()
+
+                    annotation_string = ""
+                    added_frame_ids = []
+                    bounding_box_string = {}
+                    frame_counter = 0
+                    added_object_entities = []
+
+                    continue
                 
 
                 PromptAnswer = getPromptTemplate(media_path=video_path,media_type="video")
                 add_video_token = True
-                AG_Prompt = getRandomPrompt(key='AG_Prompt_bbonly', static=True)
-                # AG_Prompt = AG_Prompt.replace("{objects_list}",  ",".join(get_shuffled_list(AG_Objects)) )
-                # AG_Prompt = AG_Prompt.replace("{spatial_relations}", ",".join(get_shuffled_list(AG_relations["spatial"])))
-                # AG_Prompt = AG_Prompt.replace("{contacting_relations}", ",".join(get_shuffled_list(AG_relations["contacting"])))
-                # AG_Prompt = AG_Prompt.replace("{attention_relations}", ",".join(get_shuffled_list(AG_relations["attention"])))
+                AG_Prompt = getRandomPrompt(key='AG_Prompt_sg_with_center', static=True)
+                AG_Prompt = AG_Prompt.replace("{objects_list}",  ",".join(get_shuffled_list(AG_Objects)) )
+                AG_Prompt = AG_Prompt.replace("{spatial_relations}", ",".join(get_shuffled_list(AG_relations["spatial"])))
+                AG_Prompt = AG_Prompt.replace("{contacting_relations}", ",".join(get_shuffled_list(AG_relations["contacting"])))
+                AG_Prompt = AG_Prompt.replace("{attention_relations}", ",".join(get_shuffled_list(AG_relations["attention"])))
 
                 convQ = getConvBlock(value=AG_Prompt, 
                                 conv_type="human", media_type="<video>", 
@@ -296,9 +341,11 @@ if __name__=="__main__":
                 if add_video_token:
                     add_video_token = False
 
-                
-                annotation_string = str(annotation_string)
-                convA = getConvBlock(value=annotation_string+"#sg_end", 
+                bb_string = f"#bb_start {str(bounding_box_string)} #bbend"
+                annotation_string =  f"#sg_start {annotation_string} #sg_end"
+                final_response = f"{bb_string} {annotation_string}"
+
+                convA = getConvBlock(value=final_response, 
                             conv_type="gpt", media_type="<video>", 
                             add_media_token=False)
             
@@ -311,10 +358,11 @@ if __name__=="__main__":
                 json_annotations.append(PromptAnswer)
 
                 Annotation_counter+=1
-                annotation_string = {}
+                annotation_string = ""
                 added_frame_ids = []
-                added_object_entities = []
+                bounding_box_string = {}
                 frame_counter = 0
+                added_object_entities = []
 
     
 
