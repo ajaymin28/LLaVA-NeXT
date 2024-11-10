@@ -6,7 +6,8 @@ import glob
 import numpy as np
 import time
 from utils.utilities import eval_tagging_scores
-from utils.utilities import pre_clean_prediction_data_v18
+from utils.utilities import pre_clean_prediction_data_onevision_v14_AG
+from utils.utilities import get_substring_between
 from utils.utilities import calculate_accuracy_varying_lengths, remove_ids
 from utils.utilities import getRandomPrompt, SGSpecialTokens
 from utils.utilities import get_AG_annotations_framewise, get_shuffled_list
@@ -309,9 +310,9 @@ if __name__=="__main__":
     dataset_name_to_save = dataset_name
 
     # TODO SET PATHS here for propts
-    exec(open("/home/jbhol/dso/gits/LLaVA-NeXT/picklePrompt.py").read())
+    exec(open("/root/jbhoi/gits/LLaVA-NeXT/picklePrompt.py").read())
     defaultPrompt = "None"
-    with open('/home/jbhol/dso/gits/LLaVA-NeXT/prompts.pkl', 'rb') as handle:
+    with open('/root/jbhoi/gits/LLaVA-NeXT/prompts.pkl', 'rb') as handle:
         b = pickle.load(handle)
         defaultPrompt = b["version_14_AG_ZS_triplets"]
 
@@ -326,8 +327,8 @@ if __name__=="__main__":
         #     raise Exception("Require prev_eval data path to continue previous eval")
 
     splits = ["test"]
-    VIDEO_ROOT_PATH = "/groups/sernam/datasets/ActionGenome/ActionGenome/videos"
-    AG_ANNOTATIONS_DIR = "/groups/sernam/datasets/ActionGenome/ActionGenome/annotations"
+    VIDEO_ROOT_PATH = "/root/jbhoi/gits/ActionGenome/videos"
+    AG_ANNOTATIONS_DIR = "/root/jbhoi/gits/ActionGenome/annotations"
     CHUNK_N = 1000 # Q&A will be chunked into CHUNK_N parts
     AG_Annotations,dataset_meta,video_frame_data = get_AG_annotations_framewise(AG_ANNOTATIONS_DIR=AG_ANNOTATIONS_DIR, 
                                                                                 subset=splits[0])
@@ -469,10 +470,10 @@ if __name__=="__main__":
             args.video_path = video_path
             set_video(args=args, video_frame_index=Block_frame_ids)
             outputs_unclean = get_model_output(prompt=sgcls_prompt,file=file,batch_of_frames=Block_frame_ids)
-            outputs = pre_clean_prediction_data_v18(outputs_unclean["triplets"])
+            outputs = pre_clean_prediction_data_onevision_v14_AG(outputs_unclean["triplets"])
 
-            import pdb
-            pdb.set_trace()
+            # import pdb
+            # pdb.set_trace()
 
             llava_response_json[video_id][frame_block_index] = {
                 # "objects_list": outputs["objects_list"],
@@ -492,7 +493,7 @@ if __name__=="__main__":
 
             try:
                 Block_GT_triplets_woids = remove_ids(Block_GT_Triplets,version="v2_1",remove_indexes=True)
-                Block_predicated_triplets_woids = remove_ids(outputs,version="v2_1",remove_indexes=True)
+                Block_predicated_triplets_woids = remove_ids(outputs["triplets"],version="v2_1",remove_indexes=True)
             except Exception as e:
                 print(f"error removing ids {e}")
                 pass

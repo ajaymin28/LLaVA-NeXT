@@ -61,12 +61,7 @@ Step-2: Describe attention and contacting relationship for person and objects, a
 Step-3: Provide triplets in the format <object-id,relation,object-id> using Step-1 and Step-2.
 
 Example output: 
-#sg_start 
-    { 
-        "objects": ["person-1", "table-5", "laptop-3"], 
-        "triplets": [["person-1", "not looking at", "table-5"],["person-1", "looking at", "laptop-3"],["laptop-3", "in front of", "person-1"],["table-5", "on the side of", "person-1"],] 
-    } 
-#sg_end 
+#sg_start { "objects": ["person-1", "table-5", "laptop-3"], "triplets": { "attention":  [["person-1", "not looking at", "table-5"]], "spatial": [["laptop-3", "in front of", "person-1"],["table-5", "on the side of", "person-1"]],"contacting": [["person-1", "looking at", "laptop-3"]]}} #sg_end 
 """
 
 

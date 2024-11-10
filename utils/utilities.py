@@ -633,6 +633,87 @@ def remove_triplet_indexes(triplet):
     return [remove_idx(element) for element in triplet]
 
 
+def pre_clean_prediction_data_onevision_v14_AG(model_response, fileData=None, remove_entity_idx=False, contains_temporal_entity=False):
+    """
+    Quadruplets for spatial + action predicates
+    """
+    block_triplets = {
+        "quadruplets": [[] for i in range(8)],
+        "triplets": [[] for i in range(8)],
+        "scene": [],
+        "description": [],
+        "objects": []
+    }
+    prediction_data = model_response
+    prediction_data = prediction_data.strip("</s>").lower()
+
+    if "#sg_start" in prediction_data and "#sg_end" in prediction_data:
+
+        # print(cleanString)
+        try:
+            cleanString = get_substring_between(s=prediction_data,start_substring="#sg_start",end_substring="#sg_end").strip()
+            # comment_str = "// This triplet is not necessary as it does not provide additional information.\n"
+            # if comment_str in cleanString:
+            #     cleanString = cleanString.replace(comment_str, "")
+        except Exception as e:
+            print("error getting sgblock data")
+    else:
+        cleanString = prediction_data
+
+    # cleanString = re.sub(r"(frame-\d+)", r"'\1'", cleanString)
+
+    # print(cleanString)
+    try:
+        # print("evaluating")
+        evaluated_string_json = eval(cleanString)
+        for key,frame_data in evaluated_string_json.items():
+            # print(key)
+            if key=="scene":
+                block_triplets["scene"].append(frame_data)
+            elif key=="description":
+                block_triplets["description"].append(frame_data)
+            elif key=="objects":
+                for obj in frame_data:
+                    block_triplets["objects"].append(obj)
+            elif key=="triplets":
+
+                def append_to_block(triplData, block_triplets):
+                    for j in range(8):
+                        for trp in triplData:
+                            block_triplets["triplets"][j].append(trp)
+                    return block_triplets
+
+                # import pdb
+                # pdb.set_trace()
+
+                try:
+                    attention = frame_data["attention"]
+                    block_triplets = append_to_block(attention,block_triplets)
+
+                except Exception as e:
+                    print(f"error parsing: triplets: {frame_data}")
+
+                try:
+                    spatial = frame_data["spatial"]
+                    block_triplets = append_to_block(spatial,block_triplets)
+                except Exception as e:
+                    print(f"error parsing: triplets: {frame_data}")
+
+                try:
+                    contacting = frame_data["contacting"]
+                    block_triplets = append_to_block(contacting,block_triplets)
+                except Exception as e:
+                    print(f"error parsing: triplets: {frame_data}")
+
+                    
+    except Exception as e:
+        print(e, fileData)
+        # print("model response", model_response)
+        pass
+
+
+    return block_triplets
+
 def pre_clean_prediction_data_onevision_v14_vrd(model_response, fileData=None, remove_entity_idx=False, contains_temporal_entity=False):
     """
     Quadruplets for spatial + action predicates
