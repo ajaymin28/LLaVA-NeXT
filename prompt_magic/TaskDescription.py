@@ -50,7 +50,7 @@ The objects are: table,chair,bag,person,doorway,medicine,cup/glass/bottle,food,f
 There are three types of relationship: 1. attention 2. contacting and 3. spatial. 
 Attention relation describes if person is looking at a specific object or not, or its unsure in the scene.
 Contacting relation describes if person is interacting with object in the scene (e.g. holding, twisting). if there is not contacting, state 'not contacting'.
-Spatial relation describes location of the object with respect to the person in the scene (e.g. behind, above)
+Spatial relation describes location of the object with respect to the person in the scene (e.g. <window,behind,person>, <light,above,person>)
 
 The attention relations are: unsure, not looking at, looking at.
 The contacting relations are: not contacting, sitting on, leaning on, other relationship, holding, touching, twisting, eating, drinking from, standing on,wearing,lying on,carrying,wiping,covered by,writing on,have it on the back.

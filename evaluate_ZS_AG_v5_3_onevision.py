@@ -477,7 +477,7 @@ if __name__=="__main__":
 
             llava_response_json[video_id][frame_block_index] = {
                 # "objects_list": outputs["objects_list"],
-                "triplets": outputs,
+                "triplets": outputs["triplets"],
                 "frames": Block_frame_ids,
                 "GT_triplets": Block_GT_Triplets
             }
@@ -543,6 +543,9 @@ if __name__=="__main__":
                     if fpred_o not in AG_Objects:
                         if fpred_o not in PredData["objects"]:
                             PredData["objects"].append(fpred_o)
+
+                # import pdb
+                # pdb.set_trace()
 
                 for fm_key, fmdata in frame_metric.items():
                     """
