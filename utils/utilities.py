@@ -500,7 +500,15 @@ def getFramesForObject(vid_data, Subject_id):
             return frames_
     return "None"
 
-def unnormbb(pred_box, mask):
+
+def unnormbb(pred_box, mask, normlize=False, decimal=2, img_h=None, img_w=None):
+    if normlize:
+        pred_box[0] = round(pred_box[0]/img_w, decimal)
+        pred_box[2] = round(pred_box[2]/img_w, decimal)
+        pred_box[1] = round(pred_box[1]/img_h, decimal)
+        pred_box[3] = round(pred_box[3]/img_h, decimal)
+        return pred_box
+
     pred_box[0] = int(pred_box[0]*mask.shape[1])
     pred_box[2] = int(pred_box[2]*mask.shape[1])
     pred_box[1] = int(pred_box[1]*mask.shape[0])

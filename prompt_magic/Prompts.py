@@ -5,6 +5,11 @@ from prompt_magic import TaskDescription, ActualQuestion, InContextExamples, Lis
 # importlib.reload(InContextExamples)
 # importlib.reload(objectspredicates)
 
+v14_Task_description_AG_triplets_ZS = TaskDescription.Task_description_v14_AG_with_list_GPT
+
+
+v14_Task_description_AG_triplets_sgcls = TaskDescription.Task_description_v14_ZS_AG_sgcls_short
+v14_Task_description_AG_triplets_precls  = TaskDescription.Task_description_v14_ZS_AG_predcls
 
 v14_Task_description_vidor_quadruplets_without_obj_list = TaskDescription.Task_description_v14_vidor_quadruplets_with_list_GPT
 v14_prompt_vidor_quadruplets_withIds_without_obj_list = f"""{v14_Task_description_vidor_quadruplets_without_obj_list}"""
