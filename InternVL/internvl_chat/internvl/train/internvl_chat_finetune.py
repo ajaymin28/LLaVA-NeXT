@@ -16,11 +16,13 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import partial
 from typing import Dict, Literal, Optional
-
+from decord import VideoReader
 import numpy as np
 import torch
 import torch.distributed as dist
 import transformers
+
+sys.path.append(os.getcwd())
 from internvl.dist_utils import init_dist
 from internvl.model.internlm2.modeling_internlm2 import InternLM2ForCausalLM
 from internvl.model.internvl_chat import (InternVisionConfig,
@@ -523,18 +525,28 @@ class LazySupervisedDataset(Dataset):
 
         # Get the video file path
         video_file = data_item['video']
-        video_path = os.path.join(self.root, video_file)
 
         # Load the video frames using tcs_loader
         # TODO: Load videos without using tcsloader.
-        image_list = self.tcs_loader(
-            video_path,
-            image_type='video',
-            max_num_frames=self.max_num_frame,
-            min_num_frames=self.min_num_frame,
-            sample=self.sampling_method,
-            clip=data_item.get('clip', None),
-            frame_indices=data_item.get('frame_indices', None))
+        if self.tcs_loader is not None:
+            image_list = self.tcs_loader(
+                os.path.join(self.root, video_file),
+                image_type='video',
+                max_num_frames=self.max_num_frame,
+                min_num_frames=self.min_num_frame,
+                sample=self.sampling_method,
+                clip=data_item.get('clip', None),
+                frame_indices=data_item.get('frame_indices', None))
+        else:
+            if os.path.isdir(os.path.join(self.root, video_file)):
+                image_list = []
+                for ind in data_item['frame_indices']:
+                    image_list.append(Image.open(os.path.join(self.root, video_file, f"{str(ind).zfill(6)}.png")))
+            else:
+                video_reader = VideoReader(os.path.join(self.root, video_file), num_threads=1)
+                frames = video_reader.get_batch(data_item['frame_indices']).asnumpy()  # (T, H, W, C), np.uint8
+                image_list = [Image.fromarray(frames[i]) for i in range(frames.shape[0])]
+
 
         # Generate special tokens for each video frame
         special_tokens = '\n'.join(['Frame-{}: <image>'.format(i + 1) for i in range(len(image_list))])
@@ -975,11 +987,11 @@ def main():
         model.language_model.lm_head.requires_grad = True
 
     if model_args.use_backbone_lora:
-        model.wrap_backbone_lora(r=model_args.use_backbone_lora, lora_alpha=2 * model_args.use_backbone_lora, init_lora_weights=model_args.init_lora_weights)
+        model.wrap_backbone_lora(r=model_args.use_backbone_lora, lora_alpha=2 * model_args.use_backbone_lora) #, init_lora_weights=model_args.init_lora_weights)
         model.config.use_backbone_lora = model_args.use_backbone_lora
 
     if model_args.use_llm_lora:
-        model.wrap_llm_lora(r=model_args.use_llm_lora, lora_alpha=2 * model_args.use_llm_lora, init_lora_weights=model_args.init_lora_weights)
+        model.wrap_llm_lora(r=model_args.use_llm_lora, lora_alpha=2 * model_args.use_llm_lora) #, init_lora_weights=model_args.init_lora_weights)
         model.config.use_llm_lora = model_args.use_llm_lora
 
     if model_args.freeze_mlp:

@@ -156,6 +156,7 @@ class TrainingArguments(transformers.TrainingArguments):
     lora_dropout: float = 0.05
     lora_weight_path: str = ""
     lora_bias: str = "none"
+    use_rslora: bool = field(default=False)
     mm_projector_lr: Optional[float] = None
     mm_vision_tower_lr: Optional[float] = None
     group_by_varlen: bool = field(default=False)
@@ -256,8 +257,8 @@ def find_all_linear_names(model):
         lora_module_names.remove("lm_head")
     
     # added
-    # lora_module_names.add('fc1')
-    # lora_module_names.add('fc2')
+    lora_module_names.add('fc1')
+    lora_module_names.add('fc2')
 
     return list(lora_module_names)
 
@@ -1528,6 +1529,7 @@ def train(attn_implementation=None):
             target_modules=find_all_linear_names(model),
             lora_dropout=training_args.lora_dropout,
             bias=training_args.lora_bias,
+            # use_rslora=training_args.use_rslora,
             task_type="CAUSAL_LM",
             init_lora_weights=training_args.init_lora_weights,
         )

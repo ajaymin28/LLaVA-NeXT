@@ -7,9 +7,11 @@ GRADIENT_ACC=$((BATCH_SIZE / PER_DEVICE_BATCH_SIZE / GPUS))
 
 
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-export MASTER_PORT=34229
+export MASTER_PORT=34230
 export TF_CPP_MIN_LOG_LEVEL=3
 export LAUNCHER=pytorch
+
+export TORCH_DISTRIBUTED_DEBUG=INFO
 
 OUTPUT_DIR='work_dirs/internvl_chat_v2_0/internvl2_40b_hermes2_yi_34b_dynamic_res_2nd_finetune_lora'
 

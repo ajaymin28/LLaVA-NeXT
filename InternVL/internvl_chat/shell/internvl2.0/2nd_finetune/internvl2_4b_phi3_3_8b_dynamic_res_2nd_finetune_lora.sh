@@ -1,5 +1,10 @@
 set -x
 
+source ~/.bashrc
+conda activate internvl
+
+module load cuda/cuda-12.1.0
+
 GPUS=${GPUS:-2}
 BATCH_SIZE=${BATCH_SIZE:-16}
 PER_DEVICE_BATCH_SIZE=${PER_DEVICE_BATCH_SIZE:-4}
@@ -29,10 +34,10 @@ torchrun \
   --nproc_per_node=${GPUS} \
   --master_port=${MASTER_PORT} \
   internvl/train/internvl_chat_finetune.py \
-  --model_name_or_path "./pretrained/InternVL2-4B" \
+  --model_name_or_path "OpenGVLab/InternVL2-8B" \
   --conv_style "phi3-chat" \
   --output_dir ${OUTPUT_DIR} \
-  --meta_path "./shell/data/internvl_1_2_finetune_custom.json" \
+  --meta_path "./shell/data/ActionGenome/ag_meta.json" \
   --overwrite_output_dir True \
   --force_image_size 448 \
   --max_dynamic_patch 6 \
@@ -65,5 +70,5 @@ torchrun \
   --use_thumbnail True \
   --ps_version 'v2' \
   --deepspeed "zero_stage1_config.json" \
-  --report_to "tensorboard" \
+  --report_to "wandb" \
   2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"

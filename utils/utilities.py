@@ -9,6 +9,20 @@ import pickle
 import cv2
 from tqdm import tqdm
 
+AG_OBJECTS_ALTERATIVES = {
+    "cup": "cup/glass/bottle",
+    "glass": "cup/glass/bottle",
+    "bottle": "cup/glass/bottle",
+    "closet": "closet/cabinet",
+    "cabinet": "closet/cabinet",
+    "phone": "phone/camera",
+    "camera": "phone/camera",
+    "notebook": "paper/notebook",
+    "paper": "paper/notebook",
+    "sofa": "sofa/couch",
+    "couch": "sofa/couch"
+}
+
 
 def chunk_list(list_, chunk_n):
     chunk_n = max(1, chunk_n)
@@ -47,6 +61,27 @@ def get_varying_list(current_block_list, full_list, fix_size=100):
 
 	random.shuffle(current_block_list)
 	return current_block_list
+
+
+def check_bbox_overlap(xyxy1, xyxy2, iou_threshold=0.5):
+
+    x_left = max(xyxy1[0], xyxy2[0])
+    y_top = max(xyxy1[1], xyxy2[1])
+    x_right = min(xyxy1[2], xyxy2[2])
+    y_bottom = min(xyxy1[3], xyxy2[3])
+
+    if x_right < x_left or y_bottom < y_top:
+        return False  # No overlap
+
+    intersection_area = (x_right - x_left) * (y_bottom - y_top)
+
+    bbox1_area = (xyxy1[2] - xyxy1[0]) * (xyxy1[3] - xyxy1[1])
+    bbox2_area = (xyxy2[2] - xyxy2[0]) * (xyxy2[3] - xyxy2[1])
+
+    iou = intersection_area / (bbox1_area + bbox2_area - intersection_area)
+
+    return iou >= iou_threshold
+
 
 def unnormbb_vidvrd(bb_data, width, height, round_by=3):
     newbb_data = copy.deepcopy(bb_data)
@@ -143,6 +178,133 @@ def eval_tagging_scores(gt_relations, pred_relations, min_pred_num=1):
     prec = tp_cnt/np.maximum(tp_cnt+fp_cnt, np.finfo(np.float32).eps)
 
     return prec, rec, gt_hit_scores
+
+def eval_tagging_scores_with_bb(gt_relations, pred_relations, min_pred_num=1, mode='triplet'):
+
+    # here 'triplets' can be either triplet, subject, or object ...
+
+    # gt_relations/pred_relations = [{'triplet': ((sub, bbox), rel, (obj, bbox)), 'score': 0.9}, ...] if mode=='triplet'
+    #                             = [{'triplet': (obj, bbox), 'score': 0.9}, ...] if mode=='object'/'subject'
+    #                             = [{'triplet': rel, 'score': 0.9}, ...] if mode=='predicate'
+
+    pred_relations = sorted(pred_relations, key=lambda x: x['score'], reverse=True)
+    if mode == 'predicate':
+        gt_triplets = set(r['triplet'] for r in gt_relations)
+    elif mode == 'subject' or mode == 'object':
+        gt_triplets = set((r['triplet'][0], tuple(r['triplet'][1])) for r in gt_relations)
+    else:
+        gt_triplets = set(((r['triplet'][0][0], tuple(r['triplet'][0][1])), r['triplet'][1], (r['triplet'][2][0], tuple(r['triplet'][2][1]))) for r in gt_relations)
+
+    if mode == 'predicate':
+        gt_triplets_dict = {r['triplet']: (0,0,0,0) for r in gt_relations}
+    elif mode == 'subject' or mode == 'object':
+        gt_triplets_dict = {}
+        for r in gt_relations:
+            if r['triplet'][0] not in gt_triplets_dict:
+                gt_triplets_dict[r['triplet'][0]] = []
+            gt_triplets_dict[r['triplet'][0]].append(r['triplet'][1])
+    else:
+        gt_triplets_dict = {}
+        for r in gt_relations:
+            if (r['triplet'][0][0], r['triplet'][1], r['triplet'][2][0]) not in gt_triplets_dict:
+                gt_triplets_dict[(r['triplet'][0][0], r['triplet'][1], r['triplet'][2][0])] = []
+            gt_triplets_dict[(r['triplet'][0][0], r['triplet'][1], r['triplet'][2][0])].append((r['triplet'][0][1], r['triplet'][2][1]))
+
+    pred_triplets = {} # {(sub, pred, obj): bbox}
+
+    for r in pred_relations:
+        if mode == 'triplet':
+            triplet_no_bb = tuple([r['triplet'][0][0], r['triplet'][1], r['triplet'][2][0]])
+        elif mode == 'subject' or mode == 'object':
+            triplet_no_bb = r['triplet'][0]
+        else: # relation
+            triplet_no_bb = r['triplet']
+
+        if not triplet_no_bb in pred_triplets:
+            pred_triplets[triplet_no_bb] = []
+        if mode == 'triplet':
+            pred_triplets[triplet_no_bb].append((r['triplet'][0][1], r['triplet'][2][1]))
+        elif mode == 'subject' or mode == 'object':
+            pred_triplets[triplet_no_bb].append(r['triplet'][1])
+        else:
+            pred_triplets[triplet_no_bb] = True # set anything -- this is relation so we don't have bbox
+
+    gt_hit_scores = []
+    for r in gt_relations:
+        gt_hit_scores.append(-np.inf)
+    gt_hit_scores.extend([-np.inf]*(min_pred_num-len(gt_hit_scores)))
+    gt_hit_scores_no_bb = np.asarray(gt_hit_scores)
+    gt_hit_scores_with_bb = gt_hit_scores.copy()
+
+    fp_cnt_no_bb, tp_cnt_no_bb = 0,0 
+    fp_cnt_with_bb, tp_cnt_with_bb = 0,0 
+    for i, t in enumerate(gt_triplets):
+        if mode == 'triplet':
+            gt_triplet_no_bb = tuple([t[0][0], t[1], t[2][0]])
+        elif mode == 'subject' or mode == 'object':
+            gt_triplet_no_bb = t[0]
+        else:
+            gt_triplet_no_bb = t
+
+        if gt_triplet_no_bb in pred_triplets:
+            gt_hit_scores_no_bb[i] = 1
+            tp_cnt_no_bb +=1
+            
+            if mode == 'predicate':
+                gt_hit_scores_with_bb[i] = 1
+                tp_cnt_with_bb += 1
+                continue
+
+            for bbox in pred_triplets[gt_triplet_no_bb]:
+                if mode == 'triplet':
+                    is_match = check_bbox_overlap(t[0][1], bbox[0]) and check_bbox_overlap(t[2][1], bbox[1])
+                else:
+                    is_match = check_bbox_overlap(t[1], bbox)
+                if is_match:
+                    gt_hit_scores_with_bb[i] = 1
+                    tp_cnt_with_bb += 1
+                    break
+        
+    for i, t in enumerate(pred_relations):
+
+        if mode == 'predicate':
+            pred_no_bb = t['triplet']
+        elif mode == 'subject' or mode == 'object':
+            pred_no_bb = t['triplet'][0]
+        else:
+            pred_no_bb = (t['triplet'][0][0], t['triplet'][2][0])
+
+        if pred_no_bb not in gt_triplets_dict:
+            fp_cnt_no_bb += 1
+            fp_cnt_with_bb += 1
+
+        else:
+            is_overlap = False
+            if mode == 'predicate':
+                continue
+            for bbox in pred_triplets[pred_no_bb]:
+                if mode == 'triplet':
+                    ismatch_subject = any([check_bbox_overlap(t['triplet'][0][1], gt[0]) for gt in gt_triplets_dict[(t['triplet'][0][0], t['triplet'][1], t['triplet'][2][0])]])
+                    ismatch_object = any([check_bbox_overlap(t['triplet'][0][1], gt[1]) for gt in gt_triplets_dict[(t['triplet'][0][0], t['triplet'][1], t['triplet'][2][0])]])
+                    # is_match = check_bbox_overlap(t['triplet'][0][1], gt_triplets_dict[(t['triplet'][0][0], t['triplet'][1], t['triplet'][2][0])][0]) \
+                    #     and check_bbox_overlap(t['triplet'][2][1], gt_triplets_dict[(t['triplet'][0][0], t['triplet'][1], t['triplet'][2][0])][1])
+                    is_match = ismatch_subject and ismatch_object
+                elif mode == 'subject' or mode == 'object':
+                    # is_match = check_bbox_overlap(t['triplet'][1], gt_triplets_dict[t['triplet'][0]])
+                    is_match = any([check_bbox_overlap(t['triplet'][1], gt) for gt in gt_triplets_dict[t['triplet'][0]]])
+                if is_match: 
+                    is_overlap = True
+                    break
+            if not is_overlap:
+                fp_cnt_with_bb += 1
+
+    rec_sgcls = tp_cnt_no_bb/np.maximum(len(gt_triplets_dict), np.finfo(np.float32).eps)
+    prec_sgcls = tp_cnt_no_bb/np.maximum(tp_cnt_no_bb+fp_cnt_no_bb, np.finfo(np.float32).eps)
+
+    rec_sgdet = tp_cnt_with_bb/np.maximum(len(gt_triplets_dict), np.finfo(np.float32).eps)
+    prec_sgdet = tp_cnt_with_bb/np.maximum(tp_cnt_with_bb+fp_cnt_with_bb, np.finfo(np.float32).eps)
+
+    return (prec_sgcls, rec_sgcls, gt_hit_scores_no_bb), (prec_sgdet, rec_sgdet, gt_hit_scores_with_bb)
 
 # def eval_tagging_scores_vrdformer(gt_relations, pred_relations, min_pred_num=0):
 #     pred_relations = sorted(pred_relations, key=lambda x: x['score'], reverse=True)
@@ -1546,7 +1708,7 @@ def getVideoFrameCount(video_path):
 
 
 
-
+ 
 ### Action Gnome helpers
 
 AG_relations = {
@@ -1706,6 +1868,8 @@ def get_AG_annotations_framewise(AG_ANNOTATIONS_DIR,subset="train"):
                     if len(unnorm_person_bb)==0 or obj_bb==None:
                         continue
                     
+                    x, y, w, h = obj_bb
+                    obj_bb = [x, y, x+w, y+h]
 
                     attention_relationship = objAnnot["attention_relationship"]
                     spatial_relationship = objAnnot["spatial_relationship"]

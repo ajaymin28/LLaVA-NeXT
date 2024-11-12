@@ -170,8 +170,17 @@ def sort_frames(frame_paths):
 
 def read_frames_folder(
         video_path, num_frames, sample='rand', fix_start=None,
-        client=None, clip=None, min_num_frames=4
+        client=None, clip=None, min_num_frames=4, frame_indices=None
 ):
+    # --- start of change sam --- #
+    if frame_indices is not None:
+        frames = []
+        for ind in frame_indices:
+            frame_path = os.path.join(video_path, f'{str(ind).zfill(6)}.png') # hacky, for AG
+            frames.append(Image.open(frame_path).convert('RGB'))
+        return frames
+    # --- end of change sam --- #
+
     if 's3://' in video_path:
         image_list = sort_frames(client.list(video_path))
         frames = []
@@ -236,7 +245,7 @@ class TCSLoader(object):
         elif image_type == 'video':
             if fn.endswith('/'):
                 frames = read_frames_folder(fn, num_frames=max_num_frames, min_num_frames=min_num_frames,
-                                            client=self.client, sample=sample)
+                                            client=self.client, sample=sample, frame_indices=frame_indices)
             elif fn.endswith('.gif'):
                 frames = read_frames_gif(fn, num_frames=max_num_frames, min_num_frames=min_num_frames,
                                          client=self.client, sample=sample)

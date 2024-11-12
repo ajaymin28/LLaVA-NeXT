@@ -31,7 +31,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         kwargs["load_in_8bit"] = True
     elif load_4bit:
         kwargs["load_in_4bit"] = True
-        kwargs["quantization_config"] = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16, bnb_4bit_use_double_quant=True, bnb_4bit_quant_type="nf4")
+        # kwargs["quantization_config"] = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16, bnb_4bit_use_double_quant=True, bnb_4bit_quant_type="nf4")
     elif torch_dtype == "float16":
         kwargs["torch_dtype"] = torch.float16
     elif torch_dtype == "bfloat16":

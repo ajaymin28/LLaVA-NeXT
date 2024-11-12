@@ -1,0 +1,3 @@
+[submodule "InternVL"]
+	path = InternVL
+	url = git@github.com:OpenGVLab/InternVL.git

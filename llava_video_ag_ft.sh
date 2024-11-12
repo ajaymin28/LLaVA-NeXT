@@ -7,8 +7,8 @@ module load cuda/cuda-12.1.0
 # unset LD_LIBRARY_PATH
 
 # Set up the data folder
-IMAGE_FOLDER="/groups/sernam/datasets/VidVRD/VRDFormer_VRD/data/vidvrd/videos"
-VIDEO_FOLDER="/groups/sernam/datasets/VidVRD/VRDFormer_VRD/data/vidvrd/videos"
+IMAGE_FOLDER="/groups/sernam/datasets/ActionGenome/ActionGenome/videos"
+VIDEO_FOLDER="/groups/sernam/datasets/ActionGenome/ActionGenome/videos"
 DATA_YAML="scripts/video/train/exp.yaml" # e.g exp.yaml
 
 ############### Prepare Envs #################
@@ -32,13 +32,14 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
-MID_RUN_NAME="$(date +"%m.%d_%H:%M")-llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-vidvrd_v5_3_split0_olora256_1024_llm+vision+adapter+fc_use_rslora"
-#PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-ov-si"  
-PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-si" 
+MID_RUN_NAME="$(date +"%m.%d_%H:%M")-llavaov-AG-v5_3_split00_olora256_512_full"
+# PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-si"  
+PREV_STAGE_CHECKPOINT="lmms-lab/LLaVA-Video-7B-Qwen2" 
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
     # --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
+    # --use_rslora True \
 # --mm_vision_tower_lr=2e-6 \
 # ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
 deepspeed --master_port 30000 \
@@ -50,10 +51,8 @@ deepspeed --master_port 30000 \
     --image_folder $IMAGE_FOLDER \
     --video_folder $VIDEO_FOLDER \
     --lora_enable True \
-    --mm_vision_tower_lr=2e-6 \
     --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
     --lora_r 256 --lora_alpha 512 \
-    --use_rslora True \
     --init_lora_weights olora \
     --vision_tower ${VISION_MODEL_VERSION} \
     --mm_projector_lr 2e-5 \

@@ -8,7 +8,7 @@ from utils.utilities import pre_clean_prediction_data_v18
 from utils.utilities import calculate_accuracy_varying_lengths, remove_ids
 from utils.utilities import getRandomPrompt, SGSpecialTokens
 from utils.utilities import get_AG_annotations_framewise, get_shuffled_list
-from utils.utilities import AG_Objects,AG_relations
+from utils.utilities import AG_Objects,AG_relations, AG_OBJECTS_ALTERATIVES
 
 import argparse
 import os
@@ -227,6 +227,67 @@ def get_model_output(prompt,file,batch_of_frames=None):
     return sg_outputs
 
 
+def generate_answer(model, tokenizer, prompt, input, modality="video"):
+    sg_outputs = {
+        "question": prompt,
+        "answer": ""
+    }
+
+    conv = conv_templates["qwen_2"].copy()
+
+    qs = prompt
+    # if args.add_time_instruction:
+    #     time_instruciton = f"The video lasts for {video_time:.2f} seconds, and {len(input_video[0])} frames are uniformly sampled from it. These frames are located at {frame_time}.Please answer the following questions related to this video."
+    #     qs = f'{time_instruciton}\n{qs}'
+    if model.config.mm_use_im_start_end:
+        qs = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN + "\n" + qs
+    else:
+        qs = DEFAULT_IMAGE_TOKEN + "\n" + qs
+
+    conv.append_message(conv.roles[0], qs)
+    conv.append_message(conv.roles[1], None)
+    prompt = conv.get_prompt()
+
+    input_ids = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).cuda()
+    if tokenizer.pad_token_id is None:
+        if "qwen" in tokenizer.name_or_path.lower():
+            print("Setting pad token to bos token for qwen model.")
+            tokenizer.pad_token_id = 151643
+            
+    attention_masks = input_ids.ne(tokenizer.pad_token_id).long().cuda()
+
+    stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
+    keywords = [stop_str]
+    stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
+
+    # cur_prompt = question
+
+    with torch.inference_mode():
+        # model.update_prompt([[cur_prompt]])
+        # import pdb;pdb.set_trace()
+        # output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True, stopping_criteria=[stopping_criteria])
+        # if "mistral" not in cfg_pretrained._name_or_path.lower():
+        output_ids = model.generate(inputs=input_ids, images=input, attention_mask=attention_masks, modalities=modality, do_sample=False, temperature=0.0, max_new_tokens=2048, top_p=0.1,num_beams=1,use_cache=False, stopping_criteria=[stopping_criteria])
+            # output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True, stopping_criteria=[stopping_criteria])
+        # else:
+        #     output_ids = model.generate(inputs=input_ids, images=input, attention_mask=attention_masks, modalities=modality, do_sample=False, temperature=0.0, max_new_tokens=2048, top_p=0.1, num_beams=1, use_cache=False)
+        #     # output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True)
+
+
+        outputs = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
+
+        # import pdb;pdb.set_trace()
+        # if "mistral" not in cfg_pretrained._name_or_path.lower():
+        if outputs.endswith(stop_str):
+            outputs = outputs[: -len(stop_str)]
+
+        outputs = outputs.strip()
+        sg_outputs["answer"] = outputs
+    
+    return sg_outputs
+
+
+
 def parse_args():
     """
     Parse command-line arguments.
@@ -344,6 +405,7 @@ if __name__=="__main__":
         "predicate": {"precision": [], "recall": []},
         "triplet": {"precision": [], "recall": []} 
     }
+    
 
     for val_id_idx,AG_Annotation in enumerate(AG_Annotations):
 
@@ -483,10 +545,6 @@ if __name__=="__main__":
 
                 for fpred in frame_pred_triplets:
                     fpred_s, fpred_p, fpred_o  = fpred # v3_1 changes
-                    pred_all["triplet"].append({"triplet": fpred, "score": 1.0})
-                    pred_all["subject"].append({"triplet": fpred_s, "score": 1.0})
-                    pred_all["predicate"].append({"triplet": fpred_p, "score": 1.0})
-                    pred_all["object"].append({"triplet": fpred_o, "score": 1.0})
 
                     if fpred_s not in AG_Objects:
                         if fpred_s not in PredData["subjects"]:
@@ -497,6 +555,13 @@ if __name__=="__main__":
                     if fpred_o not in AG_Objects:
                         if fpred_o not in PredData["objects"]:
                             PredData["objects"].append(fpred_o)
+
+                    fpred_s = AG_OBJECTS_ALTERATIVES.get(fpred_s,fpred_s)
+                    fpred_o = AG_OBJECTS_ALTERATIVES.get(fpred_o,fpred_o)
+                    pred_all["triplet"].append({"triplet": fpred, "score": 1.0})
+                    pred_all["subject"].append({"triplet": fpred_s, "score": 1.0})
+                    pred_all["predicate"].append({"triplet": fpred_p, "score": 1.0})
+                    pred_all["object"].append({"triplet": fpred_o, "score": 1.0})
 
                 for fm_key, fmdata in frame_metric.items():
                     """
