@@ -10,6 +10,18 @@ import cv2
 from tqdm import tqdm
 import json
 
+class SEEDS:
+    """
+    Don't change values
+    """
+    RANDOM_ANNOTATIONS_SHUFFLE_SEED = 145
+    AG_OBJECT_PREDICATE_PARTIAL_SELECTION_SEEDS = [978, 324]
+
+def addTriplet(triplet, Objects, relations):
+    """
+    Add triplet if entities belongs to predefined selected list.
+    """
+
 def consolidate_results(jsons_list):
     cleaned_outputs = {}
     for rawData in jsons_list:
@@ -117,6 +129,23 @@ def pre_clean_temporal_triplets(model_response, fileData=None, remove_entity_idx
 
     
     return block_triplets
+
+
+class SEEDS:
+    """
+    Don't change values
+    """
+    RANDOM_ANNOTATIONS_SHUFFLE_SEED = 145
+    AG_OBJECT_PREDICATE_PARTIAL_SELECTION_SEEDS = [978, 324]
+
+def addTriplet(triplet, Objects, relations):
+    """
+    Add triplet if entities belongs to predefined selected list.
+    """
+    subj, pred, obj = triplet
+    if subj in Objects and obj in Objects and pred in relations:
+        return True
+    return False
 
 def chunk_list(list_, chunk_n):
     chunk_n = max(1, chunk_n)
@@ -1783,8 +1812,16 @@ def load_AG_annotations(annotation_dir):
 
     return object_anno, person_anno, frame_list
 
+def addIf(triplet, Objects, relations):
+    """
+    Add triplet if entities belongs to predefined selected list.
+    """
+    subj, pred, obj = triplet
+    if subj in Objects and obj in Objects and pred in relations:
+        return True
+    return False
 
-def get_AG_annotations_framewise(AG_ANNOTATIONS_DIR,subset="train"):
+def get_AG_annotations_framewise(AG_ANNOTATIONS_DIR,subset="train", EvalKeepData=None):
     """
     Custom helper function for AG annotation
 
@@ -1795,6 +1832,10 @@ def get_AG_annotations_framewise(AG_ANNOTATIONS_DIR,subset="train"):
             for frame_id, triplets in video_annotations: \n
 
     """
+
+    if EvalKeepData is not None:
+        AllRels = EvalKeepData["selected_relations"]["spatial"] + EvalKeepData["selected_relations"]["contacting"] + EvalKeepData["selected_relations"]["attention"]
+        AllObjects = EvalKeepData["selected_objects"]
 
     object_anno, person_anno, frame_list = load_AG_annotations(annotation_dir=AG_ANNOTATIONS_DIR)
 
@@ -1919,23 +1960,41 @@ def get_AG_annotations_framewise(AG_ANNOTATIONS_DIR,subset="train"):
                     for attn_rel in attention_relationship:
                         if "_" in attn_rel: attn_rel = attn_rel.replace("_", " ")
                         trip = ["person", attn_rel, obj_class]
-                        frame_triplets.append(trip)
-                        frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
+                        if EvalKeepData is not None:
+                            if addIf(triplet=trip, Objects=AllObjects,relations=AllRels):
+                                frame_triplets.append(trip)
+                                frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
+                        else:
+                            frame_triplets.append(trip)
+                            frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
 
                     for spa_rel in spatial_relationship:
                         if "_" in spa_rel: spa_rel = spa_rel.replace("_", " ")
                         trip = [obj_class, spa_rel, "person"]
-                        frame_triplets.append(trip)
-                        frame_triplets_bb.append([obj_bb,unnorm_person_bb,(frame_h,frame_w)])
+                        if EvalKeepData is not None:
+                            if addIf(triplet=trip, Objects=AllObjects,relations=AllRels):
+                                frame_triplets.append(trip)
+                                frame_triplets_bb.append([obj_bb,unnorm_person_bb,(frame_h,frame_w)])
+                        else:
+                            frame_triplets.append(trip)
+                            frame_triplets_bb.append([obj_bb,unnorm_person_bb,(frame_h,frame_w)])
+                        
 
                     for cont_rel in contacting_relationship:
                         if "_" in cont_rel: cont_rel = cont_rel.replace("_", " ")
                         trip = ["person", cont_rel, obj_class]
-                        frame_triplets.append(trip)
-                        frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
 
+                        if EvalKeepData is not None:
+                            if addIf(triplet=trip, Objects=AllObjects,relations=AllRels):
+                                frame_triplets.append(trip)
+                                frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
+                        else:
+                            frame_triplets.append(trip)
+                            frame_triplets_bb.append([unnorm_person_bb,obj_bb,(frame_h,frame_w)])
             
-            frame_block_triplets.append([frameid,frame_triplets,frame_triplets_bb])
+            
+            if len(frame_triplets)>0:
+                frame_block_triplets.append([frameid,frame_triplets,frame_triplets_bb])
 
         overall_annotations.append([video_id, frame_block_triplets])
 
