@@ -6,6 +6,185 @@ vidvrd_predicates_numbered = """1.jump right 2.stand left 3.taller 4.jump past 5
 vidvrd_objects_numbered = """1.antelope 2.person 3.dog 4.zebra 5.bicycle 6.horse 7.monkey 8.fox 9.elephant 10.lion 11.giant_panda 12.airplane 13.whale 14.watercraft 15.car 16.bird 17.cattle 18.rabbit 19.snake 20.frisbee 21.motorcycle 22.ball 23.domestic_cat 24.bear 25.red_panda 26.lizard 27.skateboard 28.sheep 29.squirrel 30.bus 31.sofa 32.train 33.turtle 34.tiger 35.hamster"""
 
 
+# """
+# Example: 
+# If frame height,width is (480,280).
+# and given bounding box pairs by frames : { 
+# 'frame-0': [[[210.0, 267.3, 403.2, 267.3],[252.0, 8.1, 21.0, 8.1]]],
+# 'frame-1': [[[210.0, 267.3, 403.2, 267.3],[210.0, 251.1, 222.6, 256.5]]], 
+# 'frame-2': [[[210.0, 267.3, 403.2, 267.3],[252.0, 8.1, 21.0, 8.1]],[[210.0, 267.3, 403.2, 267.3],[210.0, 251.1, 222.6, 256.5]]]    
+# }
+# Answer:
+# #sg_start
+# { 
+#   'frame-0': {
+#     'objects': [[{'person-2': [210.0, 267.3, 403.2, 267.3]}, {'phone/camera-5': [252.0, 8.1, 21.0, 8.1]}]],
+#     'relations':{
+#         'attention': [['person-2','looking at','phone/camera-5']],
+#         'contacting': [['person-2','holding','phone/camera-5']],
+#         'spatial': [['phone/camera-5','in front of','person-2']]
+#     }
+#   },
+#   'frame-1': {
+#     'objects': [[{'person-2': [210.0, 267.3, 403.2, 267.3]}, {'pillow-7': [210.0, 251.1, 222.6, 256.5]}]],
+#     'relations':{
+#         'attention': [['person-2','not looking at','pillow-7']],
+#         'contacting': [['person-2','holding','pillow-7']],
+#         'spatial': [['pillow-7','in front of','person-2']]
+#     }
+#   },
+#   'frame-2': { 
+#     'objects': [[{'person-2': [210.0, 267.3, 403.2, 267.3]}, {'phone/camera-5': [252.0, 8.1, 21.0, 8.1]}], [{'person-2': [210.0, 267.3, 403.2, 267.3]}, {'pillow-7': [210.0, 251.1, 222.6, 256.5]}]],
+#     'relations':{
+#         'attention': [['person-2','not looking at','pillow-7'],['person-2','looking at','phone/camera-5']], 
+#         'contacting': [['person-2','holding','pillow-7'],['person-2','holding','pillow-7']],
+#         'spatial': [['pillow-7','in front of','person-2'],['phone/camera-5','in front of','person-2']]
+#     }  
+#   }
+# }
+# """
+
+Task_description_v14_AG_with_list_GPT = """Your task is to create meaningful triplet which describe the provided video. the triplets consist of subject, relation, and object. 
+The objects are: table,chair,bag,person,doorway,medicine,cup/glass/bottle,food,floor,broom,shoe,clothes,door,doorknob,groceries,closet/cabinet,laptop,bed,shelf,blanket,sandwich,refrigerator,vacuum,box,light,phone/camera,dish,paper/notebook,mirror,book,sofa/couch,television,pillow,towel,picture,window
+
+There are three types of relationship: 1. attention 2. contacting and 3. spatial. 
+Attention relation describes if person is looking at a specific object or not, or its unsure in the scene.
+Contacting relation describes if person is interacting with object in the scene (e.g. holding, twisting). if there is not contacting, state 'not contacting'.
+Spatial relation describes location of the object with respect to the person in the scene (e.g. <window,behind,person>, <light,above,person>)
+
+The attention relations are: unsure, not looking at, looking at.
+The contacting relations are: not contacting, sitting on, leaning on, other relationship, holding, touching, twisting, eating, drinking from, standing on,wearing,lying on,carrying,wiping,covered by,writing on,have it on the back.
+The spatial relations are: in front of, beneath, behind, on the side of, in, above.
+
+Step-1: List all unique objects present in the provided video using the objects list provided and assign random IDs to them for tracking. 
+Step-2: Describe attention and contacting relationship for person and objects, and spatial relationship for object with respect to person.
+Step-3: Provide triplets in the format <object-id,relation,object-id> using Step-1 and Step-2.
+
+Example output: 
+#sg_start { "objects": ["person-1", "table-5", "laptop-3"], "triplets": { "attention":  [["person-1", "not looking at", "table-5"]], "spatial": [["laptop-3", "in front of", "person-1"],["table-5", "on the side of", "person-1"]],"contacting": [["person-1", "looking at", "laptop-3"]]}} #sg_end 
+"""
+
+
+Task_description_v14_ZS_AG_sgcls_short = """
+You are provided with a video and a set of bounding box normlized coordinates pairs in format [xmin,ymin,xmax,ymax] with a specific frame ids of the video. 
+A list of predefined objects is provided as follow: person,paper/notebook,picture,floor,blanket,window,vacuum,shoe,closet/cabinet,door,phone/camera,pillow,dish,towel,broom,doorknob,cup/glass/bottle,light,box,doorway,medicine,mirror,food,chair,book,television,sofa/couch,sandwich,bed,bag,laptop,table,clothes,groceries,shelf,refrigerator.
+
+Your task is to detect object present in the given bounding box region from the predefined list of objects.
+
+
+Given bounding box pairs by frames : { 
+'frame-0': [[[0.5, 0.99, 0.96, 0.99],[0.6, 0.03, 0.05, 0.03]]],
+'frame-1': [[[0.5, 0.99, 0.96, 0.99],[0.5, 0.93, 0.53, 0.95]]], 
+'frame-2': [[[0.5, 0.99, 0.96, 0.99],[0.6, 0.03, 0.05, 0.03]],[[0.5, 0.99, 0.96, 0.99],[0.5, 0.93, 0.53, 0.95]]]    
+}
+Follow the output format:
+#sg_start
+{
+    'frame-0': {
+        'objects': [[{'person-2': [0.5, 0.99, 0.96, 0.99]}, {'phone/camera-5': [0.6, 0.03, 0.05, 0.03]}]],
+        'relations':{
+            'attention': [['person-2','looking at','phone/camera-5']],
+            'contacting': [['person-2','holding','phone/camera-5']],
+            'spatial': [['phone/camera-5','in front of','person-2']]
+        }
+    },
+    'frame-1': {
+        'objects': [[{'person-2': [0.5, 0.99, 0.96, 0.99]}, {'pillow-7': [0.5, 0.93, 0.53, 0.95]}]],
+        'relations':{
+            'attention': [['person-2','not looking at','pillow-7']],
+            'contacting': [['person-2','holding','pillow-7']],
+            'spatial': [['pillow-7','in front of','person-2']]
+        }
+    },
+    'frame-2': { 
+        'objects': [[{'person-2': [0.5, 0.99, 0.96, 0.99]}, {'phone/camera-5': [0.6, 0.03, 0.05, 0.03]}], [{'person-2': [0.5, 0.99, 0.96, 0.99]}, {'pillow-7': [0.5, 0.93, 0.53, 0.95]}]],
+        'relations':{
+            'attention': [['person-2','not looking at','pillow-7'],['person-2','looking at','phone/camera-5']], 
+            'contacting': [['person-2','holding','pillow-7'],['person-2','holding','pillow-7']],
+            'spatial': [['pillow-7','in front of','person-2'],['phone/camera-5','in front of','person-2']]
+        }
+    }
+}
+#sg_end
+"""
+
+
+Task_description_v14_ZS_AG_sgcls = """You are provided with a video and a set of bounding box coordinates pairs in format [xmin,ymin,xmax,ymax] for specific frames (identified by frame IDs). And a list of predefined objects as follows: person,paper/notebook,picture,floor,blanket,window,vacuum,shoe,closet/cabinet,door,phone/camera,pillow,dish,towel,broom,doorknob,cup/glass/bottle,light,box,doorway,medicine,mirror,food,chair,book,television,sofa/couch,sandwich,bed,bag,laptop,table,clothes,groceries,shelf,refrigerator.
+Additionally, three types of predefined relationships are given to describe the interactions between the person and the objects across the frames.
+1. Attention=looking at,unsure,not looking at. 
+2. Spatial=behind,on the side of,in front of,above,beneath,in. 
+3. Contacting=drinking from,leaning on,standing on,covered by,eating,wearing,touching,carrying,lying on,writing on,wiping,other relationship,holding,not contacting,twisting,have it on the back,sitting on.
+Attention relationship indicates whether the person is visually focused on the object in the scene. Spatial relationship describes the object's position relative to the person within the scene. Contacting relationship specifies the physical interaction or contact between the person and the object.
+Your task is as follows,
+1. Detect object present in the given bounding box region from the predefined list of objects and assign a unique random #id to track the objects throughout the frames.
+2. Identify relationship between objects and person from the predefined list. For each [person,object] pairs give Attention and Contatcting relations in form of triplets e.g. [person,relation,object] and for each [object,person] pairs, give spatial relation in form of triplets e.g. [object,realtion,person].
+
+Example: 
+Given bounding box pairs by frames : { 
+'frame-0': [[[0.5, 0.99, 0.96, 0.99],[0.6, 0.03, 0.05, 0.03]]],
+'frame-1': [[[0.5, 0.99, 0.96, 0.99],[0.5, 0.93, 0.53, 0.95]]], 
+'frame-2': [[[0.5, 0.99, 0.96, 0.99],[0.6, 0.03, 0.05, 0.03]],[[0.5, 0.99, 0.96, 0.99],[0.5, 0.93, 0.53, 0.95]]]    
+}
+Follow the output format:
+#sg_start
+{ 
+'frame-0': {
+    'objects': {
+        {'person-2': [0.5, 0.99, 0.96, 0.99]}, 
+        {'phone/camera-5': [0.6, 0.03, 0.05, 0.03]}},
+    'relations':{
+        'attention': [['person-2','looking at','phone/camera-5']],
+        'contacting': [['person-2','holding','phone/camera-5']],
+        'spatial': [['phone/camera-5','in front of','person-2']]}},
+'frame-1': {
+    'objects': {
+        {'person-2': [0.5, 0.99, 0.96, 0.99]}, 
+        {'pillow-7': [0.5, 0.93, 0.53, 0.95]}},
+    'relations':{
+        'attention': [['person-2','not looking at','pillow-7']],
+        'contacting': [['person-2','holding','pillow-7']],
+        'spatial': [['pillow-7','in front of','person-2']]},},
+'frame-2': { 
+    'objects': {
+        {'person-2': [0.5, 0.99, 0.96, 0.99]}, 
+        {'phone/camera-5': [0.6, 0.03, 0.05, 0.03]},  
+        {'pillow-7': [0.5, 0.93, 0.53, 0.95]}},
+    'relations':{
+        'attention': [['person-2','not looking at','pillow-7'],['person-2','looking at','phone/camera-5']], 
+        'contacting': [['person-2','holding','pillow-7'],['person-2','holding','pillow-7']],
+        'spatial': [['pillow-7','in front of','person-2'],['phone/camera-5','in front of','person-2']]}  
+    }
+
+}
+#sg_end
+"""
+
+Task_description_v14_ZS_AG_predcls = """You are provided with a video and a set of [person,object] pairs, each associated with bounding box coordinates in format [xmin,ymin,xmax,ymax] for specific frames (identified by frame IDs). Additionally, three predefined types of relationships are given to describe the interactions between the person and the objects across the frames.
+
+1. Attention=looking at,unsure,not looking at. 
+2. Spatial=behind,on the side of,in front of,above,beneath,in. 
+3. Contacting=drinking from,leaning on,standing on,covered by,eating,wearing,touching,carrying,lying on,writing on,wiping,other relationship,holding,not contacting,twisting,have it on the back,sitting on.
+
+Attention relationship indicates whether the person is visually focused on the object in the scene. Spatial relationship describes the object's position relative to the person within the scene. Contacting relationship specifies the physical interaction or contact between the person and the object.
+
+Your task is to identify relationships between [person,object] and [object,person] in the provided video from the predefined list of relations.
+
+For each [person,object] pairs give Attention and Contatcting relations in form of triplets e.g. [person,relation,object] and 
+for each [object,person] pairs, give spatial relation in form of triplets e.g. [object,realtion,person].
+
+Example: 
+Given: {'frame-0': [{'person': [0.5, 0.99, 0.96, 0.99]}, {'phone/camera': [0.6, 0.03, 0.05, 0.03]}],'frame-1': [{'person': [0.5, 0.99, 0.96, 0.99]}, {'pillow': [0.5, 0.93, 0.53, 0.95]}], 'frame-2': [{'person': [0.5, 0.99, 0.96, 0.99]}, {'phone/camera': [0.6, 0.03, 0.05, 0.03]},  {'pillow': [0.5, 0.93, 0.53, 0.95]}]}
+
+Output:
+#sg_start
+{ 
+'frame-0': {'attention': [['person','looking at','phone/camera']],'contacting': [['person','holding','phone/camera']],'spatial': [['phone/camera','in front of','person']]},
+'frame-1': {'attention': [['person','not looking at','pillow']],'contacting': [['person','holding','pillow']],'spatial': [['pillow','in front of','person']]},
+'frame-2': { 'attention': [['person','not looking at','pillow'],['person','looking at','phone/camera']], 'contacting': [['person','holding','pillow'],['person','holding','pillow']],'spatial': [['pillow','in front of','person'],['phone/camera','in front of','person']]}
+}   
+#sg_end
+"""
+
 
 # Task_video_description_v1 = f"""
 #     The video containing 8 frames is provided.

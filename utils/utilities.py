@@ -8,6 +8,7 @@ import os
 import pickle
 import cv2
 from tqdm import tqdm
+import json
 
 AG_OBJECTS_ALTERATIVES = {
     "cup": "cup/glass/bottle",
@@ -23,6 +24,113 @@ AG_OBJECTS_ALTERATIVES = {
     "couch": "sofa/couch"
 }
 
+def consolidate_results(jsons_list):
+    cleaned_outputs = {}
+    for rawData in jsons_list:
+        # triplet_key = "cleaned_output"
+        print(rawData)
+        with open(rawData) as f:
+            raw_data = json.loads(f.read())
+            for raw_data_item in [raw_data]:
+                for video_id, video_data in raw_data_item.items():
+                    if video_id not in cleaned_outputs.keys():
+                        cleaned_outputs[video_id] = {}
+                    for block_id,block_data in video_data.items():
+                        
+                        if "cleaned_output" not in block_data.keys() and "triplets" not in block_data.keys():
+                            continue
+
+                        if "cleaned_output" not in block_data.keys():
+                            triplet_key = "triplets"
+                        else:
+                            block_data["triplets"] = copy.deepcopy(block_data["cleaned_output"])
+                            del block_data["cleaned_output"]
+                            
+                        # if "triplets" not in block_data.keys():
+                        #     triplet_key = "cleaned_output"
+
+                        if "triplets" in block_data.keys():
+                            if block_id not in cleaned_outputs[video_id]:
+                                cleaned_outputs[video_id][block_id] = {}
+
+                            cleaned_outputs[video_id][block_id] = {
+                                "frames": block_data["frames"],
+                                "GT_triplets": block_data["GT_triplets"],
+                                "triplets": block_data["triplets"],
+                                # "triplets": block_data["cleaned_output"],
+                            }
+    return cleaned_outputs
+
+def pre_clean_temporal_triplets(model_response, fileData=None, remove_entity_idx=False):
+    ##[red panda-0:lie next to:red panda-1]_[Frame-0:Frame-7];[red panda-0:lie left:red panda-1]_[Frame-0:Frame-7];[red panda-1:lie right:red panda-0]_[Frame-0:Frame-7];[red panda-1:lie next to:red panda-0]_[Frame-0:Frame-7];[red panda-0:lie next to:red panda-2]_[Frame-0:Frame-7];[red panda-0:lie left:red panda-2]_[Frame-0:Frame-7];[red panda-2:sit right:red panda-0]_[Frame-0:Frame-7];[red panda-2:sit next to:red panda-0]_[Frame-0:Frame-7];[red panda-2:taller:red panda-0]_[Frame-0:Frame-7];[red panda-1:lie next to:red panda-2]_[Frame-0:Frame-7];[red panda-1:lie left:red panda-2]_[Frame-0:Frame-7];[red panda-2:sit right:red panda-1]_[Frame-0:Frame-7];[red panda-2:sit next to:red panda-1]_[Frame-0:Frame-7];[red panda-2:taller:red panda-1]_[Frame-0:Frame-7];
+    block_triplets = {
+        "triplets": [[] for i in range(8)],
+        "scene": [],
+        "description": [],
+        "objects": []
+    }
+
+    prediction_data = model_response
+    prediction_data = prediction_data.strip("</s>").lower()
+
+    try:
+        triplets_list = prediction_data.split(";")
+        for triplet_data in triplets_list:
+            #[red panda-0:lie next to:red panda-1]_[Frame-0:Frame-7]
+            triplet_data = triplet_data.replace(":", ",")
+            splitTemporal = triplet_data.split("_")
+            if len(splitTemporal)!=2:
+                print(f"invalid entity length {splitTemporal}")
+                continue
+            
+            triplet_data, temporal = splitTemporal
+
+            triplet_data = triplet_data.replace("[","")
+            triplet_data = triplet_data.replace("]","")
+            triplet_data = triplet_data.split(",")
+            if len(triplet_data)!=3:
+                print(f"invalid triplet: {triplet_data}")
+                continue
+
+            subj, pred, obj = triplet_data
+            triplet = [subj, pred, obj]
+
+            
+            if "[" in temporal and "]" in temporal:
+                temporal_list = temporal_list.replace("Frame-", "")
+                temporal_list = eval(temporal)
+
+                if len(temporal_list)==1:
+                    # only one frame 
+                    temporal_entity_index = temporal_list[0]
+                    if type(temporal_entity_index)!=int:
+                        temporal_entity_index = int(temporal_entity_index)
+                        block_triplets["triplets"][temporal_entity_index].append(triplet)
+                elif len(temporal_list)==2:
+                    temporal_entity_start_index,temporal_entity_end_index = temporal_list
+                    if type(temporal_entity_start_index)!=int:
+                        temporal_entity_start_index = int(temporal_entity_start_index)
+                    if type(temporal_entity_end_index)!=int:
+                        temporal_entity_end_index = int(temporal_entity_end_index)
+                    
+                    for i in range(temporal_entity_start_index,temporal_entity_end_index):
+                        if i>len(block_triplets["triplets"]):
+                            print(f"temporal entity index out of bound: {i}")
+                            continue
+
+                        block_triplets["triplets"][i].append(triplet)
+                else:
+                    print(f"invalid temporal entity: {temporal_list}")
+
+            else:
+                print(f"temporal entity is not surrounded by [] : {temporal}")
+                continue
+
+    except Exception as e:
+        print(f"erro parsing triplet data: {e},{fileData}")
+
+    
+    return block_triplets
 
 def chunk_list(list_, chunk_n):
     chunk_n = max(1, chunk_n)
@@ -143,6 +251,9 @@ def remove_ids(frames_tripletes, version="v2_1", remove_indexes=False):
             subj = subj.split("-")[0]
             obj = obj.split("-")[0]
 
+            subj = subj.strip("[")
+            obj = obj.strip("]")
+
             if remove_indexes:
                 subj = remove_idx(subj)
                 obj = remove_idx(obj)
@@ -155,7 +266,9 @@ def eval_tagging_scores(gt_relations, pred_relations, min_pred_num=1):
     pred_relations = sorted(pred_relations, key=lambda x: x['score'], reverse=True)
     gt_triplets = set(tuple(r['triplet']) for r in gt_relations)
     pred_triplets = []
-    for r in pred_relations:
+    for pred_trip_cnt, r in enumerate(pred_relations):
+        if pred_trip_cnt>min_pred_num:
+            break
         triplet = tuple(r['triplet'])
         if not triplet in pred_triplets:
             pred_triplets.append(triplet)
@@ -662,7 +775,15 @@ def getFramesForObject(vid_data, Subject_id):
             return frames_
     return "None"
 
-def unnormbb(pred_box, mask):
+
+def unnormbb(pred_box, mask, normlize=False, decimal=2, img_h=None, img_w=None):
+    if normlize:
+        pred_box[0] = round(pred_box[0]/img_w, decimal)
+        pred_box[2] = round(pred_box[2]/img_w, decimal)
+        pred_box[1] = round(pred_box[1]/img_h, decimal)
+        pred_box[3] = round(pred_box[3]/img_h, decimal)
+        return pred_box
+
     pred_box[0] = int(pred_box[0]*mask.shape[1])
     pred_box[2] = int(pred_box[2]*mask.shape[1])
     pred_box[1] = int(pred_box[1]*mask.shape[0])
@@ -786,6 +907,87 @@ def validate_model_response(model_response):
 def remove_triplet_indexes(triplet):
     return [remove_idx(element) for element in triplet]
 
+
+def pre_clean_prediction_data_onevision_v14_AG(model_response, fileData=None, remove_entity_idx=False, contains_temporal_entity=False):
+    """
+    Quadruplets for spatial + action predicates
+    """
+    block_triplets = {
+        "quadruplets": [[] for i in range(8)],
+        "triplets": [[] for i in range(8)],
+        "scene": [],
+        "description": [],
+        "objects": []
+    }
+    prediction_data = model_response
+    prediction_data = prediction_data.strip("</s>").lower()
+
+    if "#sg_start" in prediction_data and "#sg_end" in prediction_data:
+
+        # print(cleanString)
+        try:
+            cleanString = get_substring_between(s=prediction_data,start_substring="#sg_start",end_substring="#sg_end").strip()
+            # comment_str = "// This triplet is not necessary as it does not provide additional information.\n"
+            # if comment_str in cleanString:
+            #     cleanString = cleanString.replace(comment_str, "")
+        except Exception as e:
+            print("error getting sgblock data")
+    else:
+        cleanString = prediction_data
+
+    # cleanString = re.sub(r"(frame-\d+)", r"'\1'", cleanString)
+
+    # print(cleanString)
+    try:
+        # print("evaluating")
+        evaluated_string_json = eval(cleanString)
+        for key,frame_data in evaluated_string_json.items():
+            # print(key)
+            if key=="scene":
+                block_triplets["scene"].append(frame_data)
+            elif key=="description":
+                block_triplets["description"].append(frame_data)
+            elif key=="objects":
+                for obj in frame_data:
+                    block_triplets["objects"].append(obj)
+            elif key=="triplets":
+
+                def append_to_block(triplData, block_triplets):
+                    for j in range(8):
+                        for trp in triplData:
+                            block_triplets["triplets"][j].append(trp)
+                    return block_triplets
+
+                # import pdb
+                # pdb.set_trace()
+
+                try:
+                    attention = frame_data["attention"]
+                    block_triplets = append_to_block(attention,block_triplets)
+
+                except Exception as e:
+                    print(f"error parsing: triplets: {frame_data}")
+
+                try:
+                    spatial = frame_data["spatial"]
+                    block_triplets = append_to_block(spatial,block_triplets)
+                except Exception as e:
+                    print(f"error parsing: triplets: {frame_data}")
+
+                try:
+                    contacting = frame_data["contacting"]
+                    block_triplets = append_to_block(contacting,block_triplets)
+                except Exception as e:
+                    print(f"error parsing: triplets: {frame_data}")
+
+                    
+    except Exception as e:
+        print(e, fileData)
+        # print("model response", model_response)
+        pass
+
+
+    return block_triplets
 
 def pre_clean_prediction_data_onevision_v14_vrd(model_response, fileData=None, remove_entity_idx=False, contains_temporal_entity=False):
     """
@@ -1718,9 +1920,12 @@ AG_relations = {
                 'drinking from', 'standing on','wearing','lying on','carrying','wiping','covered by','writing on','have it on the back']
 }
 
+AG_relationsCombined = AG_relations["attention"]+AG_relations["spatial"]+AG_relations["contacting"]
+
 AG_Objects = ['table','chair','bag','doorway','medicine','cup/glass/bottle','food','floor','broom','shoe','clothes','door','doorknob','groceries',
 'closet/cabinet','laptop','bed','shelf','blanket','sandwich','refrigerator','vacuum','box','light','phone/camera','dish','paper/notebook',
 'mirror','book','sofa/couch','television','pillow','towel','picture','window']
+
 
 
 def load_AG_annotations(annotation_dir):

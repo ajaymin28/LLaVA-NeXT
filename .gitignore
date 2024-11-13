@@ -77,4 +77,4 @@ data_prep/data/
 
 *.png
 results/
-GroundingDino/
+GroundingDINO/*
