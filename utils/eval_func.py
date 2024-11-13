@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 DEBUG = False
 
-def get_frame_eval(vid_id,block_id,frames,GT_Triplets,Pred_Triplets, 
+def get_frame_eval(PredConfig,vid_id,block_id,frames,GT_Triplets,Pred_Triplets, 
                    sg_eval_counts,all_triplets_pairs,
                    dataset_subjects, dataset_objects, dataset_predicates,
                    check_alinged=False,alinged_subjects=None,alinged_predicates=None,alinged_objects=None):
@@ -85,7 +85,7 @@ def get_frame_eval(vid_id,block_id,frames,GT_Triplets,Pred_Triplets,
         
         # all_triplets_pairs.append([frame_GT_triplets,frame_pred_triplets,vid_id,block_id])
         for fm_key, fmdata in frame_metric.items():
-            prec, rec, hit_scores = eval_tagging_scores(gt_relations=gt_all[fm_key],pred_relations=pred_all[fm_key],min_pred_num=1)
+            prec, rec, hit_scores = eval_tagging_scores(gt_relations=gt_all[fm_key],pred_relations=pred_all[fm_key],min_pred_num=PredConfig.topk)
             frame_metric[fm_key]["precision"].append(prec)
             frame_metric[fm_key]["recall"].append(rec)
         # print(frame_GT_triplets,"<===>",frame_pred_triplets)
@@ -115,13 +115,19 @@ def get_frame_eval(vid_id,block_id,frames,GT_Triplets,Pred_Triplets,
     return frame_metric, sg_eval_counts, all_triplets_pairs, [new_subjects,new_predicates,new_objects]
 
 
-def get_block_eval(vid_data,vid_id,all_triplets_pairs,sg_eval_counts,
+def get_block_eval(PredConfig,vid_data,vid_id,all_triplets_pairs,sg_eval_counts,
                    dataset_subjects, dataset_objects,dataset_predicates,check_alinged=False,
                    alinged_subjects=None,alinged_predicates=None,alinged_objects=None):
 
     new_subjects = []
     new_objects = []
     new_predicates = []
+
+    if PredConfig is None:
+        class PRED_CONFIG:
+            topk = 100
+            remove_ids_version = "v2_1"
+        PredConfig = PRED_CONFIG()
     
     block_metric = {
         "subject": {"precision": [], "recall": []},
@@ -138,9 +144,12 @@ def get_block_eval(vid_data,vid_id,all_triplets_pairs,sg_eval_counts,
         frames = block_data["frames"]
         all_triplets_pairs[vid_id][f"Block{block_id}"]["frames"] = str(frames)
 
+        # print("GT",frame_GT_triplets)
+        # print("Pred",pred_triplets)
+
         try:
-            Block_GT_triplets_woids = remove_ids(frame_GT_triplets,version="v2_1", remove_indexes=True)
-            Block_predicated_triplets_woids = remove_ids(pred_triplets,version="v2_1", remove_indexes=True)
+            Block_GT_triplets_woids = remove_ids(frame_GT_triplets,version=PredConfig.remove_ids_version, remove_indexes=True)
+            Block_predicated_triplets_woids = remove_ids(pred_triplets,version=PredConfig.remove_ids_version, remove_indexes=True)
         except Exception as e:
             pass
 
@@ -165,7 +174,7 @@ def get_block_eval(vid_data,vid_id,all_triplets_pairs,sg_eval_counts,
 
         EVAL_DATA = {'sg_eval_counts': sg_eval_counts}
 
-        frame_metric, sg_eval_counts, all_triplets_pairs, new_entities = get_frame_eval(vid_id=vid_id,
+        frame_metric, sg_eval_counts, all_triplets_pairs, new_entities = get_frame_eval(PredConfig=PredConfig,vid_id=vid_id,
                         block_id=block_id,frames=frames,**DATASET_DATA,**EVAL_DATA,**TRIPLET_DATA,**ALIGNMENT_DATA)
         
         [new_subs,new_preds,new_objs] = new_entities
@@ -176,19 +185,26 @@ def get_block_eval(vid_data,vid_id,all_triplets_pairs,sg_eval_counts,
 
 
         for bm_key, bmdata in block_metric.items():
-            block_metric[bm_key]["precision"].append(np.average(np.array(frame_metric[bm_key]["precision"], dtype=np.float32)))
-            block_metric[bm_key]["recall"].append(np.average(np.array(frame_metric[bm_key]["recall"], dtype=np.float32)))
+            block_metric[bm_key]["precision"].append(np.average(np.array(frame_metric[bm_key]["precision"])))
+            block_metric[bm_key]["recall"].append(np.average(np.array(frame_metric[bm_key]["recall"])))
 
     return block_metric,sg_eval_counts, all_triplets_pairs, [new_subjects,new_predicates,new_objects]
  
 
 def eval_pred_data(data, dataset_subjects, dataset_objects, dataset_predicates,
-                   check_alinged=False,alinged_subjects=None,alinged_objects=None,alinged_predicates=None):
+                   check_alinged=False,alinged_subjects=None,alinged_objects=None,alinged_predicates=None,
+                   PredConfig=None):
     new_subjects = []
     new_objects = []
     new_predicates = []
 
     pred_data = data
+
+    if PredConfig is None:
+        class PRED_CONFIG:
+            topk = 100
+            remove_ids_version = "v2_1"
+        PredConfig = PRED_CONFIG()
 
     sg_eval_counts = {
         "total_obj_cnt" : 0,
@@ -234,10 +250,12 @@ def eval_pred_data(data, dataset_subjects, dataset_objects, dataset_predicates,
 
         block_metric,sg_eval_counts,all_triplets_pairs, new_entities = get_block_eval(vid_data=vid_data,
                                                                                         vid_id=vid_id,
+                                                                                        PredConfig=PredConfig,
                                                                                         **DATASET_DATA,
                                                                                         **EVAL_DATA,
                                                                                         **TRIPLET_DATA,
-                                                                                        **ALIGNMENT_DATA
+                                                                                        **ALIGNMENT_DATA,
+                                                                                        
                                                                                         )
         [new_subs,new_preds,new_objs] = new_entities
         new_objects = list(set(new_objs+new_objects))
@@ -245,18 +263,20 @@ def eval_pred_data(data, dataset_subjects, dataset_objects, dataset_predicates,
         new_subjects = list(set(new_subjects+new_subs))
         
         for oam_key, oamdata in overall_metric.items():
-            overall_metric[oam_key]["precision"].append(np.average(np.array(block_metric[oam_key]["precision"], dtype=np.float32)))
-            overall_metric[oam_key]["recall"].append(np.average(np.array(block_metric[oam_key]["recall"], dtype=np.float32)))
+            overall_metric[oam_key]["precision"].append(np.average(np.array(block_metric[oam_key]["precision"])))
+            overall_metric[oam_key]["recall"].append(np.average(np.array(block_metric[oam_key]["recall"])))
 
     sg_eval_counts["VRDFormer_Logic"] = {}
     total_vid_ids = len(overall_metric["triplet"]["precision"])
+    sg_eval_counts["VRDFormer_Logic"]["TotalVideos"] = total_vid_ids
     for metric_key, metric_values in overall_metric.items():
         if metric_key not in sg_eval_counts["VRDFormer_Logic"].keys():
             sg_eval_counts["VRDFormer_Logic"][metric_key] = {}
-        overall_precision = np.average(np.array(overall_metric[metric_key]["precision"], dtype=np.float32))
-        overall_recall = np.average(np.array(overall_metric[metric_key]["recall"], dtype=np.float32))
+        overall_precision = np.average(np.array(overall_metric[metric_key]["precision"]))
+        overall_recall = np.average(np.array(overall_metric[metric_key]["recall"]))
         sg_eval_counts["VRDFormer_Logic"][metric_key] = {
-            "Precision@1": overall_precision,
-            "Recall@1": overall_recall,
+            "Precision@1": round(overall_precision,4),
+            "Recall@1": round(overall_recall,4),
         }
+    
     return sg_eval_counts, all_triplets_pairs, [new_subjects,new_predicates,new_objects]
