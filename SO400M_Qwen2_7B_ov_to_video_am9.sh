@@ -7,8 +7,8 @@ module load cuda/cuda-12.1.0
 # unset LD_LIBRARY_PATH
 
 # Set up the data folder
-IMAGE_FOLDER="/groups/sernam/datasets/VidVRD/VRDFormer_VRD/data/vidvrd/videos"
-VIDEO_FOLDER="/groups/sernam/datasets/VidVRD/VRDFormer_VRD/data/vidvrd/videos"
+IMAGE_FOLDER="/root/datasets/VRDFormer_VRD/data/vidvrd/videos"
+VIDEO_FOLDER="/root/datasets/VRDFormer_VRD/data/vidvrd/videos"
 DATA_YAML="scripts/video/train/exp.yaml" # e.g exp.yaml
 
 ############### Prepare Envs #################

@@ -1,9 +1,5 @@
 #!/bin/bash
 
-WORK_DIR=/root/jbhoi
-
-mkdir -p $WORK_DIR
-cd $WORK_DIR
 
 git clone https://github.com/zhengsipeng/VRDFormer_VRD.git
 cd VRDFormer_VRD/data/vidvrd

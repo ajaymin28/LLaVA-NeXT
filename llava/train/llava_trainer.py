@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import datetime
 
-from accelerate import Accelerator
+from accelerate import Accelerator, DataLoaderConfiguration
 from accelerate.utils import InitProcessGroupKwargs, GradientAccumulationPlugin
 from torch.utils.data import Dataset, Sampler, DataLoader
 
@@ -250,7 +250,8 @@ class LLaVATrainer(Trainer):
         # create accelerator object
         self.accelerator = Accelerator(
             # dataloader_config=DataLoaderConfiguration(self.args.dispatch_batches),
-            dispatch_batches=self.args.dispatch_batches,
+            # dispatch_batches=self.args.dispatch_batches,
+            dataloader_config=DataLoaderConfiguration(dispatch_batches=self.args.dispatch_batches),
             split_batches=self.args.split_batches, deepspeed_plugin=self.args.deepspeed_plugin, gradient_accumulation_plugin=gradient_accumulation_plugin, kwargs_handlers=[accelerator_kwargs]
         )
         # some Trainer classes need to use `gather` instead of `gather_for_metrics`, thus we store a flag

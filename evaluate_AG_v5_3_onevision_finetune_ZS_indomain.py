@@ -608,7 +608,7 @@ if __name__=="__main__":
                     """
                     Eval score for each frame
                     """
-                    prec, rec, hit_scores = eval_tagging_scores(gt_relations=gt_all[fm_key],pred_relations=pred_all[fm_key],min_pred_num=1)
+                    prec, rec, hit_scores = eval_tagging_scores(gt_relations=gt_all[fm_key],pred_relations=pred_all[fm_key],min_pred_num=100)
                     frame_metric[fm_key]["precision"].append(prec)
                     frame_metric[fm_key]["recall"].append(rec)
 

@@ -445,13 +445,15 @@ Note:
 
 
 ## 1 vid # GPT improved/shorten
-Task_description_v13_sam = """Create action-based video scene-graph triplets by first providing a detailed description of the main activities in the video (e.g., objects present, their placements, and actions). Convert this description into [subject-id, relation, object-id] triplets, assigning unique IDs to subjects and objects for tracking.
-Note:
-    - Triplets should be strictly three entities (i.e. subject-id, relation, object-id)
+Task_description_v13_sam = """
+
+Create action-centric video scene graph by first providing a detailed description of the main activities in the video (e.g., objects, placements, and actions). 
+Convert this description into [subject-id, relation, object-id] triplets, with each id associated with a unique object.
 Example: 
-#sg_start
+
 {
-    "description": "A boy stands on a quiet street, holding a ball. He throws it across to his friend, who steps forward, arms ready. A car slows down, passing carefully behind as the second child catches the ball with a grin.",
+    "description": "A boy stands on a quiet street, holding a ball. He throws it across to his friend, who steps forward, arms ready.
+                     A car slows down, passing carefully behind as the second child catches the ball with a grin.",
     "triplets": [
         ["child-1", "standing on", "street-0"],
         ["child-1", "holding", "ball-3"],
@@ -460,8 +462,8 @@ Example:
         ["child-4", "catches", "ball-3"]
     ]
 }
-#sg_end
-Response:#sg_start
+
+Response:
 """
 
 # ## 1 vid
@@ -700,6 +702,36 @@ Task_description_v11 = f"""The objects_entity lexicon containing 125 lexemes is 
         From the provided video which contains 8 frames, generate triplets.
         Please give the output in the format given above.
 """
+
+
+Task_description_v10_sam = f"""The objects_entity lexicon containing 35 lexemes is as follows:""" + vidvrd_objects_numbered + """\n\
+    and relations_entity lexicon containing 132 lexemes is as follows:""" +  vidvrd_predicates_numbered + """\n\
+    
+    Given the objects and relations lexeme, the task is to generate triplets from the provided video in the form of [objects_entity-id lexicon, relations_entity lexicon, objects_entity-id lexicon]. 
+    The id is randomly assigned to each object-entity to ensure uniqueness and tracking throughout the video.
+    Make sure the index of the objects_entity and relations_entity is maintained.
+    Select relations_entity which best describes the relation between two objects.
+
+    In-context Example:
+        #sg_start
+        {
+            "scene": { 
+                "description" : "Two lions move through the savanna, with the larger lion leading and the smaller lion following behind. Their positions emphasize their spatial relationship and size difference.",
+            },
+            "f1": {
+                "descriptions": ["The larger lion walks in front of the smaller lion.","The smaller lion stands behind the larger lion."],
+                "triplets": [["lion-0", "walk front", "lion-1"], ["lion-1", "stand behind", "lion-0"]]
+            },  
+            "f2": {
+                "descriptions": ["The larger lion continues walking ahead.","The smaller lion walks behind, keeping pace."],
+                "triplets": [["lion-0", "walk front", "lion-1"], ["lion-1", "walk behind", "lion-0"]]
+            },  
+        }
+        #sg_end
+        
+        From the provided video which contains 8 frames, generate triplets:
+"""
+
 
 
 

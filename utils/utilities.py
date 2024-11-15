@@ -2,6 +2,7 @@ import os
 from PIL import Image
 import numpy as np
 import random
+from typing import List, Tuple, Dict, Any, Iterable
 import re
 import copy
 import os
@@ -9,6 +10,7 @@ import pickle
 import cv2
 from tqdm import tqdm
 import json
+from prompt_magic.TaskDescription import Task_description_v10_sam
 
 AG_OBJECTS_ALTERATIVES = {
     "cup": "cup/glass/bottle",
@@ -290,9 +292,58 @@ def remove_ids(frames_tripletes, version="v2_1", remove_indexes=False):
 
     return frames_tripletes
 
-def eval_tagging_scores(gt_relations, pred_relations, min_pred_num=1):
+
+def eval_tagging_scores2(gt_relations, pred_relations, min_pred_num=1, pred_pred_hits_at_k=None, pred_pred_fp_at_k=None):
+    is_triplet = isinstance(pred_relations[0]['triplet'], List) or isinstance(pred_relations[0]['triplet'], Tuple)
     pred_relations = sorted(pred_relations, key=lambda x: x['score'], reverse=True)
-    gt_triplets = set(tuple(r['triplet']) for r in gt_relations)
+
+    gt_triplets = set(tuple(r['triplet']) if is_triplet else r['triplet'] for r in gt_relations)
+    pred_triplets = []
+    for pred_trip_cnt, r in enumerate(pred_relations):
+        # if pred_trip_cnt>min_pred_num:
+        #     break
+        triplet = tuple(r['triplet']) if is_triplet else r['triplet']
+        if not triplet in pred_triplets:
+            pred_triplets.append(triplet)
+    gt_hit_scores = []
+    for r in gt_relations:
+        gt_hit_scores.append(-np.inf)
+    gt_hit_scores.extend([-np.inf]*(min_pred_num-len(gt_hit_scores)))
+    gt_hit_scores = np.asarray(gt_hit_scores)
+
+    fp_cnt, tp_cnt = 0,0 
+    for i, t in enumerate(gt_triplets):
+        if t in pred_triplets:
+            gt_hit_scores[i] = 1
+            tp_cnt +=1
+
+            if is_triplet:
+                for k in pred_pred_hits_at_k.keys():
+                    predicate = t[1]
+                    pred_pred_idx = pred_triplets.index(t)
+                    if pred_pred_idx<=k:
+                        pred_pred_hits_at_k[k][AG_relationsCombined.index(predicate)] += 1
+
+    for i, t in enumerate(pred_triplets):
+        if t not in gt_triplets:
+            fp_cnt +=1
+            if is_triplet:
+                for k in pred_pred_fp_at_k.keys():
+                    predicate = t[1]
+                    pred_pred_idx = pred_triplets.index(t)
+                    if pred_pred_idx<=k:
+                        pred_pred_fp_at_k[k][AG_relationsCombined.index(predicate)] += 1
+
+    rec = tp_cnt/np.maximum(len(gt_triplets), np.finfo(np.float32).eps)
+    prec = tp_cnt/np.maximum(tp_cnt+fp_cnt, np.finfo(np.float32).eps)
+
+    return prec, rec, gt_hit_scores
+
+def eval_tagging_scores(gt_relations, pred_relations, min_pred_num=1):
+    is_triplet = isinstance(pred_relations[0]['triplet'], List) or isinstance(pred_relations[0]['triplet'], Tuple)
+    pred_relations = sorted(pred_relations, key=lambda x: x['score'], reverse=True)
+
+    gt_triplets = set(tuple(r['triplet']) if is_triplet else r['triplet'] for r in gt_relations)
     pred_triplets = []
     for pred_trip_cnt, r in enumerate(pred_relations):
         if pred_trip_cnt>min_pred_num:
@@ -311,6 +362,7 @@ def eval_tagging_scores(gt_relations, pred_relations, min_pred_num=1):
         if t in pred_triplets:
             gt_hit_scores[i] = 1
             tp_cnt +=1
+
     for i, t in enumerate(pred_triplets):
         if t not in gt_triplets:
             fp_cnt +=1
@@ -1689,7 +1741,8 @@ prompts_list = {
       Objects: {objects}
       Predicates: {predicates}
       """
-    ]
+    ],
+    "v10_sam": [Task_description_v10_sam]
 
 
 }

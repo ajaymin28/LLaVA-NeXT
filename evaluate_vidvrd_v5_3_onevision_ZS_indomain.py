@@ -358,7 +358,7 @@ if __name__=="__main__":
     version = args.output_dir
 
     splits = ["test","train"]
-    imagenet_vidvrd_root = "/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd"
+    imagenet_vidvrd_root = "/root/datasets/VRDFormer_VRD/data/vidvrd"
     imagenet_vidvrd_video_path = os.path.join(imagenet_vidvrd_root, "videos")
     dataset = VidVRD(imagenet_vidvrd_root, imagenet_vidvrd_video_path, splits)
 
@@ -484,6 +484,9 @@ if __name__=="__main__":
     }
 
     for val_id_idx, video_id in enumerate(val_ids):
+
+        if video_id != "ILSVRC2015_train_00250021":
+            continue
 
         annot = dataset.get_anno(vid=video_id)
 

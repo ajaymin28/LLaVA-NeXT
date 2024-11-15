@@ -1,24 +1,28 @@
 datasets:
-  - json_path: data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part0.json
-    sampling_strategy: "all"
+  # - json_path: data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part0.json
+  #   sampling_strategy: "all"
   # - json_path: data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part1.json
   #   sampling_strategy: "all"
-  # - json_path: /home/scui/projects/LLaVA-NeXT/data_prep/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part1.json
-  #   sampling_strategy: "all"
-  # - json_path: /home/scui/projects/LLaVA-NeXT/data_prep/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part2.json
-  #   sampling_strategy: "all"
-  # - json_path: /home/scui/projects/LLaVA-NeXT/data_prep/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part3.json
-  #   sampling_strategy: "all"
-  # - json_path: /home/scui/projects/LLaVA-NeXT/data_prep/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part4.json
-  #   sampling_strategy: "all"
-  # - json_path: /home/scui/projects/LLaVA-NeXT/data_prep/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part5.json
-  #   sampling_strategy: "all"
-  # - json_path: /home/scui/projects/LLaVA-NeXT/data_prep/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part6.json
-  #   sampling_strategy: "all"
-  # - json_path: /home/scui/projects/LLaVA-NeXT/data_prep/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part7.json
-  #   sampling_strategy: "all"
-  # - json_path: /home/scui/projects/LLaVA-NeXT/data_prep/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part8.json
-  #   sampling_strategy: "all"
+  - json_path: /root/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part0.json
+    sampling_strategy: "all"
+  - json_path: /root/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part1.json
+    sampling_strategy: "all"
+  - json_path: /root/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part2.json
+    sampling_strategy: "all"
+  - json_path: /root/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part3.json
+    sampling_strategy: "all"
+  - json_path: /root/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part4.json
+    sampling_strategy: "all"
+  - json_path: /root/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part5.json
+    sampling_strategy: "all"
+  - json_path: /root/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part6.json
+    sampling_strategy: "all"
+  - json_path: /root/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part7.json
+    sampling_strategy: "all"
+  - json_path: /root/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part8.json
+    sampling_strategy: "all"
+  - json_path: /root/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part9.json
+    sampling_strategy: "all"
 
   # - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_next_fit_mix_filtered_text_wild_738590.json
   #   sampling_strategy: "first:50%"

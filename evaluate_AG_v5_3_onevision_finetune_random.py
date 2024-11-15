@@ -1,3 +1,4 @@
+from typing import List
 import os
 import json
 import glob
@@ -43,7 +44,7 @@ def set_video(args, video_meta_file, video_frame_index=[0,1,2,3,4,5,6,7]):
     # Check if the video exists
     if os.path.exists(video_path):
         if "gpt4v" != args.model_path:
-            input_video,frame_time,video_time = load_video(video_path, args, video_frame_index=video_frame_index, video_meta_json=video_meta_file)
+            input_video,frame_time,video_time = load_video(video_path, args, video_frame_index=video_frame_index)
             input_video = image_processor.preprocess(input_video, return_tensors="pt")["pixel_values"].to(device="cuda", dtype=eval(f"torch.{args.torch_dtype}"))
             input_video = [input_video]
         else:
@@ -88,18 +89,41 @@ def load_video_base64(path):
     # print(len(base64Frames), "frames read.")
     return base64Frames
 
-def load_video(video_path,args, video_meta_json, video_frame_index=[0,1,2,3,4,5,6,7]):
+# def load_video(video_path,args, video_meta_json, video_frame_index=[0,1,2,3,4,5,6,7]):
 
+#     if args.for_get_frames_num == 0:
+#         return np.zeros((1, 336, 336, 3))
+
+#     input_frames = [Image.open(os.path.join(video_path, str(i).zfill(6) + ".png")) for i in video_frame_index]
+#     video_file_name = video_path.split("/")[-1]
+#     fps, video_time = video_meta_json[video_file_name]["fps"], video_meta_json[video_file_name]["video_time"]
+#     frame_time = [i/fps for i in video_frame_index]
+#     frame_time = ",".join([f"{i:.2f}s" for i in frame_time])
+
+#     return input_frames,frame_time,video_time
+
+def load_video(video_path,args, video_frame_index=[0,1,2,3,4,5,6,7]):
     if args.for_get_frames_num == 0:
         return np.zeros((1, 336, 336, 3))
+    vr = VideoReader(video_path, ctx=cpu(0),num_threads=1)
+    total_frame_num = len(vr)
+    video_time = total_frame_num / vr.get_avg_fps()
+    fps = round(vr.get_avg_fps())
+    # frame_idx = [i for i in range(0, len(vr), fps)]
+    frame_idx = video_frame_index
+    frame_time = [i/fps for i in frame_idx]
+    
+    # if len(frame_idx) > args.for_get_frames_num or args.force_sample:
+    #     sample_fps = args.for_get_frames_num
+    #     uniform_sampled_frames = np.linspace(0, total_frame_num - 1, sample_fps, dtype=int)
+    #     frame_idx = uniform_sampled_frames.tolist()
+    #     frame_time = [i/vr.get_avg_fps() for i in frame_idx]
 
-    input_frames = [Image.open(os.path.join(video_path, str(i).zfill(6) + ".png")) for i in video_frame_index]
-    video_file_name = video_path.split("/")[-1]
-    fps, video_time = video_meta_json[video_file_name]["fps"], video_meta_json[video_file_name]["video_time"]
-    frame_time = [i/fps for i in video_frame_index]
     frame_time = ",".join([f"{i:.2f}s" for i in frame_time])
-
-    return input_frames,frame_time,video_time
+    spare_frames = vr.get_batch(frame_idx).asnumpy()
+    # import pdb;pdb.set_trace()
+    # print("Selected frames index ", frame_idx)
+    return spare_frames,frame_time,video_time
 
 def init_main(args, finetuned=False):
 
@@ -188,16 +212,18 @@ def get_model_output(prompt,file,batch_of_frames=None):
     stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
 
     # cur_prompt = question
+    do_sample = args.temperature != None
+    temperature = args.temperature if args.temperature is not None else 0.1
 
     with torch.inference_mode():
         # model.update_prompt([[cur_prompt]])
         # import pdb;pdb.set_trace()
         # output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True, stopping_criteria=[stopping_criteria])
         if "mistral" not in cfg_pretrained._name_or_path.lower():
-            output_ids = model.generate(inputs=input_ids, images=input_video, attention_mask=attention_masks, modalities="video", do_sample=False, temperature=0.0, max_new_tokens=2048, top_p=0.1,num_beams=1,use_cache=False, stopping_criteria=[stopping_criteria])
+            output_ids = model.generate(inputs=input_ids, images=input_video, attention_mask=attention_masks, modalities="video", do_sample=do_sample, temperature=temperature, max_new_tokens=2048, top_p=0.1,num_beams=1,use_cache=True, stopping_criteria=[stopping_criteria])
             # output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True, stopping_criteria=[stopping_criteria])
         else:
-            output_ids = model.generate(inputs=input_ids, images=input_video, attention_mask=attention_masks, modalities="video", do_sample=False, temperature=0.0, max_new_tokens=2048, top_p=0.1, num_beams=1, use_cache=False)
+            output_ids = model.generate(inputs=input_ids, images=input_video, attention_mask=attention_masks, modalities="video", do_sample=do_sample, temperature=temperature, max_new_tokens=2048, top_p=0.1, num_beams=1, use_cache=True)
             # output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True)
 
 
@@ -244,14 +270,14 @@ def parse_args():
     parser.add_argument("--force_sample", type=lambda x: (str(x).lower() == 'true'), default=False)
     parser.add_argument("--add_time_instruction", type=str, default=False)
 
-    parser.add_argument("--temperature", type=float, default=0.2)
+    parser.add_argument("--temperature", type=float, default=None)
     parser.add_argument("--max-new-tokens", type=int, default=4000)
     parser.add_argument("--start_index", type=int, default=0,required=False)
     parser.add_argument("--frame_num", type=int, default=8,required=False)
-    parser.add_argument("--subset", type=int, default=None,required=False)
+    parser.add_argument("--subset", type=str, default=None,required=False)
     parser.add_argument("--save_every_n_videos", type=int, default=10,required=False)
     parser.add_argument("--torch_dtype", type=str, default="float16")
-    parser.add_argument("--video_meta_file", type=str, default="/groups/sernam/datasets/ActionGenome/ActionGenome/annotations/video_meta.json")
+    parser.add_argument("--video_meta_file", type=str, default="/root/datasets/ActionGenome/annotations/video_meta.json")
     # parser.add_argument("--prev_eval_data", type=str, default="", required=False)
     return parser.parse_args()
 
@@ -298,8 +324,8 @@ if __name__=="__main__":
         #     raise Exception("Require prev_eval data path to continue previous eval")
 
     splits = ["test"]
-    VIDEO_ROOT_PATH = "/groups/sernam/datasets/ActionGenome/ActionGenome/frames"
-    AG_ANNOTATIONS_DIR = "/groups/sernam/datasets/ActionGenome/ActionGenome/annotations"
+    VIDEO_ROOT_PATH = "/root/datasets/ActionGenome/videos"
+    AG_ANNOTATIONS_DIR = "/root/datasets/ActionGenome/annotations"
     CHUNK_N = 1000 # Q&A will be chunked into CHUNK_N parts
     AG_Annotations,dataset_meta,video_frame_data = get_AG_annotations_framewise(AG_ANNOTATIONS_DIR=AG_ANNOTATIONS_DIR, 
                                                                                 subset=splits[0])
@@ -332,44 +358,32 @@ if __name__=="__main__":
         "triplet": {"precision": [], "recall": []} 
     }
 
-    if args.subset and os.path.exists(f"data_prep/data/AG_samples_subset{args.subset}.json"):
-        samples = json.load(open(f"data_prep/data/AG_samples_subset{args.subset}.json"))
-    else:
+    if args.subset and os.path.exists(args.subset):
+        samples2 = json.load(open(args.subset))
 
-        samples = []
 
-        for val_id_idx,AG_Annotation in enumerate(AG_Annotations):
-            
-            video_id, video_annotations = AG_Annotation
-            video_path = os.path.join(VIDEO_ROOT_PATH,video_id)
-            if not os.path.exists(video_path):
-                print(f"[ERROR] video doesnt exist at: {video_path}")
-                raise FileNotFoundError()
+    samples = []
 
-            frame_indices = []
-            added_GT_triplets_frames = []
-            frame_block_index = 0
-            for frame_id, frame_triplets, frame_triplets_bb in video_annotations:
-                frame_int_idx = int(frame_id.split(".")[0])
-                # print(frame_id, frame_int_idx)
-                added_GT_triplets_frames.append(frame_triplets)
-                frame_indices.append(frame_int_idx)
+    for val_id_idx,AG_Annotation in enumerate(AG_Annotations):
+        
+        video_id, video_annotations = AG_Annotation
+        if not video_id in samples2:
+            continue
+        video_path = os.path.join(VIDEO_ROOT_PATH,video_id)
+        if not os.path.exists(video_path):
+            print(f"[ERROR] video doesnt exist at: {video_path}")
+            raise FileNotFoundError()
 
-                if len(frame_indices)>=args.frame_num:
-                    samples.append({
-                        "video_id": video_id,
-                        "video_path": video_path,
-                        "frame_idxes": frame_indices,
-                        "frame_block_index": frame_block_index,
-                        "triplets": added_GT_triplets_frames,
-                    })
+        frame_indices = []
+        added_GT_triplets_frames = []
+        frame_block_index = 0
+        for frame_id, frame_triplets, frame_triplets_bb in video_annotations:
+            frame_int_idx = int(frame_id.split(".")[0])
+            # print(frame_id, frame_int_idx)
+            added_GT_triplets_frames.append(frame_triplets)
+            frame_indices.append(frame_int_idx)
 
-                    frame_indices = []
-                    added_GT_triplets_frames = []
-                    frame_block_index += 1
-
-            if len(frame_indices)>0:
-                ## add remaning frames
+            if len(frame_indices)>=args.frame_num:
                 samples.append({
                     "video_id": video_id,
                     "video_path": video_path,
@@ -378,14 +392,28 @@ if __name__=="__main__":
                     "triplets": added_GT_triplets_frames,
                 })
 
-        if args.subset is not None:
+                frame_indices = []
+                added_GT_triplets_frames = []
+                frame_block_index += 1
 
-            import random
-            random.seed(42)
+        if len(frame_indices)>0:
+            ## add remaning frames
+            samples.append({
+                "video_id": video_id,
+                "video_path": video_path,
+                "frame_idxes": frame_indices,
+                "frame_block_index": frame_block_index,
+                "triplets": added_GT_triplets_frames,
+            })
 
-            samples = random.sample(samples, args.subset)
+    # if args.subset is not None:
 
-            json.dump(samples, open(f"data_prep/data/AG_samples_subset{args.subset}.json", "w"))
+    #     import random
+    #     random.seed(42)
+
+    #     samples = random.sample(samples, args.subset)
+
+    #     json.dump(samples, open(f"data_prep/data/AG_samples_subset{args.subset}.json", "w"))
 
 
     video_count = 0
@@ -465,6 +493,9 @@ if __name__=="__main__":
             except Exception as e:
                 pass
 
+            if len(frame_pred_triplets) == 0:
+                continue
+
             gt_relations = [] # {"triplet": ['adult', 'sitting', 'sofa'], "score": 1.0},
             pred_relations = [] # {"triplet": ['adult', 'sitting', 'sofa'], "score": 1.0},
 
@@ -499,7 +530,7 @@ if __name__=="__main__":
                 """
                 Eval score for each frame
                 """
-                prec, rec, hit_scores = eval_tagging_scores(gt_relations=gt_all[fm_key],pred_relations=pred_all[fm_key],min_pred_num=1)
+                prec, rec, hit_scores = eval_tagging_scores(gt_relations=gt_all[fm_key],pred_relations=pred_all[fm_key],min_pred_num=100)
                 frame_metric[fm_key]["precision"].append(prec)
                 frame_metric[fm_key]["recall"].append(rec)
 

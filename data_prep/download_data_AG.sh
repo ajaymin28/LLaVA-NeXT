@@ -1,7 +1,4 @@
-WORK_DIR=/root/jbhoi/gits
 
-mkdir -p $WORK_DIR
-cd $WORK_DIR
 
 git clone https://github.com/JingweiJ/ActionGenome.git
 cd ActionGenome
