@@ -1,5 +1,77 @@
 datasets:
-  # - json_path: data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part0.json
+    - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part0.json
+      sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part1.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part2.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part3.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part4.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part5.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part6.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part7.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part8.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part9.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part10.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part11.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part12.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part13.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part14.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part15.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part16.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part17.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part18.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part19.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part20.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part21.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part22.json
+    #   sampling_strategy: "all"
+    # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part23.json
+    #   sampling_strategy: "all"
+
+
+  # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part0.json
+  #   sampling_strategy: "all"
+  # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part1.json
+  #   sampling_strategy: "all"
+  # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part2.json
+  #   sampling_strategy: "all"
+  # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part3.json
+  #   sampling_strategy: "all"
+  # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part4.json
+  #   sampling_strategy: "all"
+  # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part5.json
+  #   sampling_strategy: "all"
+  # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part6.json
+  #   sampling_strategy: "all"
+  # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part7.json
+  #   sampling_strategy: "all"
+  # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part8.json
+  #   sampling_strategy: "all"
+  # - json_path: /home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part9.json
+  #   sampling_strategy: "all"
+
+
+  # - json_path: /home/scui/projects/LLaVA-NeXT/data_prep/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part1.json
   #   sampling_strategy: "all"
   # - json_path: data_prep/data/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part1.json
   #   sampling_strategy: "all"

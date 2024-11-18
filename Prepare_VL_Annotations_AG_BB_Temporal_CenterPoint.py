@@ -1,6 +1,6 @@
 from utils.utilities import load_AG_annotations
 from utils.utilities import getConvBlock, getPromptTemplate, getRandomPrompt, get_shuffled_list, chunk_list
-from utils.utilities import getbbcenter
+from utils.utilities import getbbcenter, normlize_boundingbox
 import json
 from tqdm import tqdm
 import os
@@ -23,7 +23,7 @@ def parse_arguments():
     parser.add_argument(
         "--output_json_dir",
         type=str,
-        default="/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations_v5_3_with_bb_temporalCenterPoint",
+        default="/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations_v5_3_with_bb_CenterPoint_siglipnorm_4decimal",
         help="Directory to save the output JSON annotations."
     )
     
@@ -43,14 +43,6 @@ def parse_arguments():
 
     return parser.parse_args()
 
-def norm_bb(bbox, height, width):
-    x1,y1,x2,y2 = bbox
-    x1 = round((x1/width),2)
-    y1 = round((y1/height),2)
-    x2 = round((x2/width),2)
-    y2 = round((y2/height),2)
-    return [x1,y2,x2,y2]
-
 if __name__=="__main__":
 
     args = parse_arguments()
@@ -63,6 +55,9 @@ if __name__=="__main__":
     OUTPUT_JSON_DIR = args.output_json_dir
     AG_ANNOTATIONS_DIR = args.ag_annotations_dir
     CHUNK_N = args.chunk_n # Q&A will be chunked into CHUNK_N parts
+
+    FRAME_NORM_WIDTH = 384
+    FRAME_NORM_HEIGHT = 384
 
     os.makedirs(OUTPUT_JSON_DIR,exist_ok=True)
 
@@ -180,24 +175,25 @@ if __name__=="__main__":
             frameid, person_data,objects_annot = video_annotation
             frame_triplets = []
             frame_triplets_bb = []
+
+            frame_w, frame_h = person_data['bbox_size']
+            unnorm_person_bb = person_data["bbox"]
+            if len(unnorm_person_bb)>0:
+                unnorm_person_bb = list(unnorm_person_bb[0])
+            else:
+                unnorm_person_bb = []
+
             for objAnnot in objects_annot:
                 obj_class = objAnnot["class"]
-                  
                 metadata = objAnnot["metadata"]
-                frame_w, frame_h = person_data['bbox_size']
-                unnorm_person_bb = person_data["bbox"]
-
-                if len(unnorm_person_bb)>0:
-                    unnorm_person_bb = list(unnorm_person_bb[0])
-                else:
-                    unnorm_person_bb = []
-                if len(unnorm_person_bb)==0 or obj_bb==None:
-                    continue
-
+                
                 if objAnnot["visible"]:
                     obj_bb =  list(objAnnot["bbox"]) 
                 else:
                     obj_bb = []
+
+                if len(unnorm_person_bb)==0 or obj_bb==None:
+                    continue
 
 
                 try:
@@ -273,16 +269,30 @@ if __name__=="__main__":
                 (frame_h,frame_w) = frame_size
                 # import pdb
                 # pdb.set_trace()
-                
-
-                sub_bb_center = getbbcenter(bb=sub_bb, decimal_points=3, norm_center=True,frame_size=[frame_h,frame_w])
-                obj_bb_center = getbbcenter(bb=obj_bb, decimal_points=3, norm_center=True,frame_size=[frame_h,frame_w])
-
-                # sub_bb = norm_bb(bbox=sub_bb,height=frame_h,width=frame_w)
-                # obj_bb = norm_bb(bbox=obj_bb,height=frame_h,width=frame_w)
-                
 
                 s,p,o = triplet
+
+                ConvertToBox_Subject = False
+                ConvertToBox_Object = True
+                if p in AG_relations["spatial"]:
+                    # <obj,spatial,subject> we need to convert 
+
+                    # SUBJECT IS OBJECT AND OBJECT IS PERSON(SUBJECT)
+                    # just set flags so that sub_bb(which is actually object will converted to x1y1x2y1 from xywh)
+                    ConvertToBox_Object = False
+                    ConvertToBox_Subject = True
+
+
+                sub_bb_center = getbbcenter(bb=sub_bb, decimal_points=4, 
+                                            norm_center=True,
+                                            frame_size=[frame_h,frame_w],
+                                            is_width_hight_bb=ConvertToBox_Subject)
+                obj_bb_center = getbbcenter(bb=obj_bb, decimal_points=4, 
+                                            norm_center=True,
+                                            frame_size=[frame_h,frame_w],
+                                            is_width_hight_bb=ConvertToBox_Object)
+
+                
                 # annotation_string += f"[{s}_{sub_bb}:{p}:{o}_{obj_bb}];"
                 # annotation_string += f"[{s},{sub_bb}];[{o},{obj_bb}];"
                 

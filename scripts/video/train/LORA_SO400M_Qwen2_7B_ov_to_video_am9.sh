@@ -11,9 +11,9 @@ module load cuda/cuda-12.1.0
 echo $LD_LIBRARY_PATH
 
 # Set up the data folder
-IMAGE_FOLDER="/groups/sernam/datasets/ActionGenome/Charades_v1_480"
-VIDEO_FOLDER="/groups/sernam/datasets/ActionGenome/Charades_v1_480"
-DATA_YAML="scripts/video/train/exp.yaml" # e.g exp.yaml
+IMAGE_FOLDER="/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/videos"
+VIDEO_FOLDER="/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/videos"
+DATA_YAML="/home/jbhol/dso/gits/LLaVA-NeXT/scripts/video/train/VRD_P03_exp.yaml" # e.g exp.yaml
 
 # source ~/.bashrc
 # conda activate vlnext
@@ -31,7 +31,7 @@ nvidia-smi
 
 ################ Arnold Jobs ################
 
-export WANDB_PROJECT="LLM4VideoSGG"
+export WANDB_PROJECT="LLM4VideoSGG_VRDLora"
 
 LLM_VERSION="Qwen/Qwen2-7B-Instruct"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
@@ -44,7 +44,7 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
-MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-AG_v5_3_split0_23_all_mm_tune_olora256_512_llm"
+MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-VRD_v5_3_split03_olora256_512_llm"
 #PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-ov-si"  
 PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-si" 
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
@@ -54,7 +54,7 @@ cd /home/jbhol/dso/gits/LLaVA-NeXT
 ## --mm_projector_lr 2e-5
 ##     --init_lora_weights olora \
 # ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
-deepspeed --master_port 30000 \
+deepspeed --master_port 30001 \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path $PREV_STAGE_CHECKPOINT \
@@ -78,11 +78,11 @@ deepspeed --master_port 30000 \
     --mm_patch_merge_type spatial_unpad \
     --bf16 True \
     --run_name $MID_RUN_NAME \
-    --output_dir /home/jbhol/dso/gits/LLaVA-NeXT/work_dirs/$MID_RUN_NAME \
+    --output_dir /home/jbhol/dso/gits/LLaVA-NeXT/work_dirs/vrd/$MID_RUN_NAME \
     --num_train_epochs 1 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 2 \
+    --gradient_accumulation_steps 1 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 50000 \

@@ -150,6 +150,7 @@ class TrainingArguments(transformers.TrainingArguments):
     quant_type: str = field(default="nf4", metadata={"help": "Quantization data type to use. Should be one of `fp4` or `nf4`."})
     bits: int = field(default=16, metadata={"help": "How many bits to use."})
     init_lora_weights: Optional[str] = field(default=True, metadata={"help": "Lora weights initialization."})
+    use_rslora: Optional[bool] = field(default=False, metadata={"help": "Use rslora"})
     lora_enable: bool = False
     lora_r: int = 64
     lora_alpha: int = 16
@@ -1529,6 +1530,7 @@ def train(attn_implementation=None):
             target_modules=find_all_linear_names(model),
             lora_dropout=training_args.lora_dropout,
             bias=training_args.lora_bias,
+            # use_rslora=training_args.use_rslora,  # latest peft required.
             # use_rslora=training_args.use_rslora,
             task_type="CAUSAL_LM",
             init_lora_weights=training_args.init_lora_weights,

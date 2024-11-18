@@ -1,10 +1,11 @@
-from utils.utilities import load_AG_annotations
+from utils.utilities import load_AG_annotations, normlize_boundingbox
 from utils.utilities import getConvBlock, getPromptTemplate, getRandomPrompt, get_shuffled_list, chunk_list
 import json
 from tqdm import tqdm
 import os
 import random
 import argparse
+import copy
 random.seed(145)
 
 
@@ -21,7 +22,7 @@ def parse_arguments():
     parser.add_argument(
         "--output_json_dir",
         type=str,
-        default="/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations_v5_3_with_bb_temporal",
+        default="/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations_v5_3_with_bb_temporal_vidnorm",
         help="Directory to save the output JSON annotations."
     )
     
@@ -41,13 +42,20 @@ def parse_arguments():
 
     return parser.parse_args()
 
-def norm_bb(bbox, height, width):
-    x1,y1,x2,y2 = bbox
-    x1 = round((x1/width),2)
-    y1 = round((y1/height),2)
-    x2 = round((x2/width),2)
-    y2 = round((y2/height),2)
-    return [x1,y2,x2,y2]
+# def norm_bb(bbox, height, width,decimal=3, is_width_hight_bb=False):
+#     x1,y1,x2,y2 = bbox
+#     if is_width_hight_bb:
+#         # convert x1,y1,w,h to x1y1x2y2
+#         x1,y1,w,h = bbox
+#         x2 = x1 + w
+#         y2 = y1 + h
+
+#     x1 = round((x1/width),decimal)
+#     y1 = round((y1/height),decimal)
+#     x2 = round((x2/width),decimal)
+#     y2 = round((y2/height),decimal)
+    
+#     return [x1,y1,x2,y2]
 
 if __name__=="__main__":
 
@@ -61,6 +69,9 @@ if __name__=="__main__":
     OUTPUT_JSON_DIR = args.output_json_dir
     AG_ANNOTATIONS_DIR = args.ag_annotations_dir
     CHUNK_N = args.chunk_n # Q&A will be chunked into CHUNK_N parts
+
+    FRAME_NORM_WIDTH = 384
+    FRAME_NORM_HEIGHT = 384
 
     os.makedirs(OUTPUT_JSON_DIR,exist_ok=True)
 
@@ -178,24 +189,25 @@ if __name__=="__main__":
             frameid, person_data,objects_annot = video_annotation
             frame_triplets = []
             frame_triplets_bb = []
+
+            frame_w, frame_h = person_data['bbox_size']
+            unnorm_person_bb = person_data["bbox"]
+            if len(unnorm_person_bb)>0:
+                unnorm_person_bb = list(unnorm_person_bb[0])
+            else:
+                unnorm_person_bb = []
+
             for objAnnot in objects_annot:
                 obj_class = objAnnot["class"]
-                  
                 metadata = objAnnot["metadata"]
-                frame_w, frame_h = person_data['bbox_size']
-                unnorm_person_bb = person_data["bbox"]
-
-                if len(unnorm_person_bb)>0:
-                    unnorm_person_bb = list(unnorm_person_bb[0])
-                else:
-                    unnorm_person_bb = []
-                if len(unnorm_person_bb)==0 or obj_bb==None:
-                    continue
-
+                
                 if objAnnot["visible"]:
                     obj_bb =  list(objAnnot["bbox"]) 
                 else:
                     obj_bb = []
+
+                if len(unnorm_person_bb)==0 or obj_bb==None:
+                    continue
 
 
                 try:
@@ -271,10 +283,23 @@ if __name__=="__main__":
                 (frame_h,frame_w) = frame_size
                 # import pdb
                 # pdb.set_trace()
-                sub_bb = norm_bb(bbox=sub_bb,height=frame_h,width=frame_w)
-                obj_bb = norm_bb(bbox=obj_bb,height=frame_h,width=frame_w)
+                FRAME_NORM_HEIGHT = frame_h
+                FRAME_NORM_WIDTH = frame_w
 
                 s,p,o = triplet
+
+                ConvertToBox_Subject = False
+                ConvertToBox_Object = True
+                if p in AG_relations["spatial"]:
+                    # <obj,spatial,subject> we need to convert 
+
+                    # SUBJECT IS OBJECT AND OBJECT IS PERSON(SUBJECT)
+                    # just set flags so that sub_bb(which is actually object will converted to x1y1x2y1 from xywh)
+                    ConvertToBox_Object = False
+                    ConvertToBox_Subject = True
+
+                sub_bb = normlize_boundingbox(bbox=sub_bb,height=FRAME_NORM_HEIGHT,width=FRAME_NORM_WIDTH, is_width_hight_bb=ConvertToBox_Subject)
+                obj_bb = normlize_boundingbox(bbox=obj_bb,height=FRAME_NORM_HEIGHT,width=FRAME_NORM_WIDTH, is_width_hight_bb=ConvertToBox_Object)
                 # annotation_string += f"[{s}_{sub_bb}:{p}:{o}_{obj_bb}];"
                 # annotation_string += f"[{s},{sub_bb}];[{o},{obj_bb}];"
                 

@@ -15,8 +15,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --constraint=gpu80
 #SBATCH --gres-flags=enforce-binding
-#SBATCH --job-name=p06_AG_llavavidqwen2_lora
-#SBATCH --time=2-24:00:00
+#SBATCH --job-name=p06_AG_llavavidqwen2_lora_from_704
+#SBATCH --time=1-24:00:00
 #SBATCH --output=/lustre/fs1/home/jbhol/dso/jobs/%x_raw_%j.out
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ja882177@ucf.edu
@@ -30,9 +30,12 @@ module load gcc/gcc-11.2.0
 module load cuda/cuda-12.1.0
 
 ## LLAVAVID Qwen2 LORA tune p00
-##CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_AG_v5_3_onevision_finetune.py --model-base lmms-lab/LLaVA-Video-7B-Qwen2 --model-path=/home/jbhol/dso/gits/LLaVA-NeXT/work_dirs/llavaqwen2/llavaqwen2-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-AG_v5_3_split00_all_mm_tune_olora256_512_llm --output_dir=/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations/inference_output/[test][llavavid_qwen2]_AG_annotations_v5_3_p00_e01_lora --conv-mode=qwen_2
+###CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_AG_v5_3_onevision_finetune.py --start_index=1705 --model-base lmms-lab/LLaVA-Video-7B-Qwen2 --model-path=/home/jbhol/dso/gits/LLaVA-NeXT/work_dirs/llavaqwen2/llavaqwen2-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-AG_v5_3_split00_all_mm_tune_olora256_512_llm --output_dir=/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations/inference_output/[test][llavavid_qwen2]_AG_annotations_v5_3_p00_e01_lora_1705 --conv-mode=qwen_2
 
 
 ## LLAVAVID Qwen2 LORA tune p06
-CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_AG_v5_3_onevision_finetune.py --model-base lmms-lab/LLaVA-Video-7B-Qwen2 --model-path=/home/jbhol/dso/gits/LLaVA-NeXT/work_dirs/llavaqwen2/llavaqwen2-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-AG_v5_3_split06_all_mm_tune_olora256_512_llm --output_dir=/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations/inference_output/[test][llavavid_qwen2]_AG_annotations_v5_3_p06_e01_lora --conv-mode=qwen_2
+CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_AG_v5_3_onevision_finetune.py --start_index=1426 --model-base lmms-lab/LLaVA-Video-7B-Qwen2 --model-path=/groups/sernam/VideoSGG/checkpoints/llava_video/llavaqwen2-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-AG_v5_3_split06_all_mm_tune_olora256_512_llm --output_dir=/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations/inference_output/llavavideo_qwen2/[test][llavavid_qwen2]_AG_annotations_v5_3_p06_e01_lora_1426 --conv-mode=qwen_2
+
+## p023
+##CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_AG_v5_3_onevision_finetune.py --start_index=704 --model-base lmms-lab/LLaVA-Video-7B-Qwen2 --model-path=/groups/sernam/VideoSGG/checkpoints/llava_video/llavaqwen2-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-AG_v5_3_split023_all_mm_tune_olora256_512_llm --output_dir=/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations/inference_output/[test][llavavid_qwen2]_AG_annotations_v5_3_p023_e01_lora_704 --conv-mode=qwen_2
 

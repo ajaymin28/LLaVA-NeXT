@@ -1425,62 +1425,63 @@ def pre_clean_prediction_data_v18_withbb(model_response):
     parsed_data["triplets_bb"] = bbox_Data
 
     tripletSubstring = get_substring_between(s=prediction_data,start_substring="#sg_start",end_substring="#sg_end")
-    tripletSubstring = tripletSubstring.split(f"{SGSpecialTokens.VIDEO_FRAME_ID}")[1:]
+    if tripletSubstring is not None:
+        tripletSubstring = tripletSubstring.split(f"{SGSpecialTokens.VIDEO_FRAME_ID}")[1:]
 
-    special_tokens = SGSpecialTokens.get_tokens()
-    for cnt_idx, ftriplets in enumerate(tripletSubstring):
-        if cnt_idx>7:
-            break
+        special_tokens = SGSpecialTokens.get_tokens()
+        for cnt_idx, ftriplets in enumerate(tripletSubstring):
+            if cnt_idx>7:
+                break
 
-        # for spetok in special_tokens:
-        #     ftriplets = ftriplets.replace(f"{spetok}", "")
+            # for spetok in special_tokens:
+            #     ftriplets = ftriplets.replace(f"{spetok}", "")
 
-        # ftriplets = ftriplets.replace(f":", ",")
-        ftriplets = ftriplets.strip().split(";")
+            # ftriplets = ftriplets.replace(f":", ",")
+            ftriplets = ftriplets.strip().split(";")
 
-        current_frame_triplets = []
-        current_frame_triplets_bb = []
-        for ftr in ftriplets:
-            ftr_temp = ftr.split(":")
+            current_frame_triplets = []
+            current_frame_triplets_bb = []
+            for ftr in ftriplets:
+                ftr_temp = ftr.split(":")
 
-            if ftr_temp=="":
-                continue
+                if ftr_temp=="":
+                    continue
 
-            if len(ftr_temp)!=3:
-                print(f"invalid triplet length : {ftr_temp}")
-                continue
-            
-            subject_, predicate_, object_ = ftr_temp # [person_[0.28, 0.96, 0.72, 0.96],  not looking at,  mirror_[0.0, 0.96, 0.08, 0.96]
-            # subject_ = subject_.split("_")
-            # if len(subject_)!=2:
-            #     print(f"invalid subject token: {subject_}")
-            #     continue
-            
-            # subject_name, subject_bb = subject_[0],subject_[1]
-            # subject_name = subject_name.strip("[").strip("]")
+                if len(ftr_temp)!=3:
+                    print(f"invalid triplet length : {ftr_temp}")
+                    continue
+                
+                subject_, predicate_, object_ = ftr_temp # [person_[0.28, 0.96, 0.72, 0.96],  not looking at,  mirror_[0.0, 0.96, 0.08, 0.96]
+                # subject_ = subject_.split("_")
+                # if len(subject_)!=2:
+                #     print(f"invalid subject token: {subject_}")
+                #     continue
+                
+                # subject_name, subject_bb = subject_[0],subject_[1]
+                # subject_name = subject_name.strip("[").strip("]")
 
-            # subject_bb = subject_bb.strip("[").strip("]")
-            # subject_bb = eval(subject_bb)
+                # subject_bb = subject_bb.strip("[").strip("]")
+                # subject_bb = eval(subject_bb)
 
-            # object_ = object_.split("_")
-            # if len(object_)!=2:
-            #     print(f"invalid object_ token: {object_}")
-            #     continue
+                # object_ = object_.split("_")
+                # if len(object_)!=2:
+                #     print(f"invalid object_ token: {object_}")
+                #     continue
 
-            # object_name, object_bb = object_[0],object_[1]
-            # object_name = object_name.strip("[").strip("]")
-            # object_bb = object_bb.strip("[").strip("]")
-            # try:
-            #     object_bb = eval(object_bb)
-            # except Exception as e:
-            #     print(f"error parsing bounding box: {object_bb}")
+                # object_name, object_bb = object_[0],object_[1]
+                # object_name = object_name.strip("[").strip("]")
+                # object_bb = object_bb.strip("[").strip("]")
+                # try:
+                #     object_bb = eval(object_bb)
+                # except Exception as e:
+                #     print(f"error parsing bounding box: {object_bb}")
 
-            current_frame_triplets.append([subject_,predicate_,object_])
-            # current_frame_triplets_bb.append([subject_bb,object_bb])
-        # frame_triplets.append([current_frame_triplets,current_frame_triplets_bb])
+                current_frame_triplets.append([subject_,predicate_,object_])
+                # current_frame_triplets_bb.append([subject_bb,object_bb])
+            # frame_triplets.append([current_frame_triplets,current_frame_triplets_bb])
 
-        parsed_data["triplets"].append(current_frame_triplets)
-        # parsed_data["triplets_bb"].append(current_frame_triplets_bb)
+            parsed_data["triplets"].append(current_frame_triplets)
+            # parsed_data["triplets_bb"].append(current_frame_triplets_bb)
     
     return parsed_data
 
@@ -1787,24 +1788,41 @@ def getFramesForObject(vid_data, Subject_id):
             return frames_
     return "None"
 
+def normlize_boundingbox(bbox, height, width,decimal=3, is_width_hight_bb=False, norm_bb=True):
+    x1,y1,x2,y2 = bbox
 
-def getbbcenter(bb,decimal_points=2,norm_center=False,frame_size=[]):
+    if is_width_hight_bb:
+        # convert x1,y1,w,h to x1y1x2y2
+        x1,y1,w,h = bbox
+        x2 = x1 + w
+        y2 = y1 + h
+
+    if norm_bb:
+        x1 = round((x1/width),decimal)
+        y1 = round((y1/height),decimal)
+        x2 = round((x2/width),decimal)
+        y2 = round((y2/height),decimal)
+    
+    return [x1,y1,x2,y2]
+
+def getbbcenter(bb,height,width,norm_center=False,decimal_points=2, is_width_hight_bb=False):
    if len(bb)<4:
     return []
+   
+   if is_width_hight_bb:
+       # conver xywh to x1y1x2y2
+       bb = normlize_boundingbox(bbox=bb,height=height,
+                    width=width,decimal=decimal_points,
+                    is_width_hight_bb=is_width_hight_bb,
+                    norm_bb=False)
    x1,y1,x2,y2 = bb
    bb_w = (x2 - x1)/2
    bb_h = (y2 - y1)/2
    xcenter = x1 + bb_w
    ycenter = y1 + bb_h
    if norm_center:
-       if frame_size!=[]:
-            if len(frame_size)==2:
-               h,w = frame_size
-            elif len(frame_size)==3:
-               h,w,c = frame_size
-            
-            xcenter = round((xcenter/w),decimal_points)
-            ycenter = round((ycenter/h),decimal_points)
+        xcenter = round((xcenter/width),decimal_points)
+        ycenter = round((ycenter/height),decimal_points)
 
    return [round(xcenter,decimal_points), round(ycenter,decimal_points)]
 
@@ -1974,7 +1992,19 @@ def get_frame_range_for_annotations(vid_objects, vid_data,):
 
   return min_frame_idx, max_frame_idx, frames_for_obj
 
-
+def get_frame_samples(total_frames,every_nth=4,frame_window_size=32,shift_step=3, total_shifts=100):
+	frames_selected = []
+	assert shift_step!=every_nth
+	for i in range(0,total_shifts,shift_step):
+		frames =[]
+		for j in range(i, i+frame_window_size,every_nth):
+			if j>total_frames:
+				break
+			frames.append(j)
+		if len(frames)>=int(frame_window_size/every_nth):
+			frames.sort()
+			frames_selected.append(frames)
+	return frames_selected
 
 def get_default_indices(video_path, frames_to_add=8):
     total_frames = getVideoFrameCount(video_path=video_path)
