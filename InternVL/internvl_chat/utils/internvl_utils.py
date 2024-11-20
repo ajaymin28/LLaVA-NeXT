@@ -9,7 +9,7 @@ from torchvision.transforms.functional import InterpolationMode
 from transformers import AutoModel, AutoTokenizer, AutoConfig
 
 import sys
-sys.path.append("/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat")
+sys.path.append("/root/jbhoi/gits/LLaVA-NeXT/InternVL/internvl_chat")
 from internvl.model.internvl_chat import InternVLChatModel
 
 
@@ -184,8 +184,8 @@ def get_model_response(prompt,video_path,frame_indices, model,tokenizer,transfor
     response, history = model.chat(tokenizer, pixel_values, question, generation_config,
                                 num_patches_list=num_patches_list, history=None, return_history=True)
     
-    import pdb
-    pdb.set_trace()
+    # import pdb
+    # pdb.set_trace()
     
     return response
     # Multi Turn
