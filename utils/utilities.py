@@ -1485,6 +1485,34 @@ def pre_clean_prediction_data_v18_withbb(model_response):
     
     return parsed_data
 
+def pre_clean_newsvideo_data_v1(model_response):
+    """
+    Output response format:
+    {
+        'video_title': 'Flood Rescue Operations in Coastal City',
+        'video_description': {
+            'foreground_view': 'Emergency responders are seen navigating floodwaters in a small inflatable boat, helping stranded residents evacuate their homes. Some residents are carrying personal belongings while others assist elderly individuals onto the boat.',
+            'background_view': 'Flooded streets with partially submerged vehicles and damaged infrastructure. Trees are swaying in the wind, suggesting ongoing harsh weather conditions. Power lines appear downed, adding to the chaotic scene.'
+        },
+        'video_subtitle': 'Rescue teams are working tirelessly to evacuate residents affected by the severe flooding caused by torrential rains in the area.',
+        'video_headlines': 'Breaking News: Massive Flooding Hits Coastal City'
+    }
+    """
+    video_data = {}
+    prediction_data = model_response
+    prediction_data = prediction_data.strip("</s>")
+    prediction_data = prediction_data.strip()
+
+    try: 
+        parsed_data = eval(prediction_data)
+        for key,val in parsed_data.items():
+            video_data[key] = val
+    except Exception as e:
+        print(f"error parsing response : {e}")
+
+    
+    return video_data
+
 def pre_clean_prediction_data_v18(model_response):
     """
     #frameid [subject, predicate,object];.. #frameid

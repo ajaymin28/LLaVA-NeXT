@@ -8,7 +8,7 @@ import os
 import copy
 import torch
 import sys
-sys.path.append("/root/jbhoi/gits/LLaVA-NeXT") # add util modules to path
+sys.path.append("/home/jbhol/dso/gits/LLaVA-NeXT") # add util modules to path
 
 from utils.utilities import eval_tagging_scores
 from utils.utilities import pre_clean_prediction_data_v18
@@ -31,7 +31,7 @@ encoder.FLOAT_REPR = lambda o: format(o, '.2f')
 import random
 from typing import Dict
 
-sys.path.append("/root/jbhoi/gits/LLaVA-NeXT/InternVL") # add InternVL util modules to path
+sys.path.append("/home/jbhol/dso/gits/LLaVA-NeXT/InternVL") # add InternVL util modules to path
 from internvl_chat.utils.internvl_utils import load_model
 from internvl_chat.utils.internvl_utils import get_model_response as get_internvl_model_response
 
@@ -473,6 +473,9 @@ if __name__=="__main__":
                 except Exception as e:
                     pass
 
+                # if len(frame_pred_triplets)==0:
+                #     continue
+
                 gt_relations = [] # {"triplet": ['adult', 'sitting', 'sofa'], "score": 1.0},
                 pred_relations = [] # {"triplet": ['adult', 'sitting', 'sofa'], "score": 1.0},
 
@@ -507,9 +510,13 @@ if __name__=="__main__":
                     """
                     Eval score for each frame
                     """
-                    prec, rec, hit_scores = eval_tagging_scores(gt_relations=gt_all[fm_key],pred_relations=pred_all[fm_key],min_pred_num=1)
-                    frame_metric[fm_key]["precision"].append(prec)
-                    frame_metric[fm_key]["recall"].append(rec)
+                    if len(pred_all[fm_key])>0:
+                        prec, rec, hit_scores = eval_tagging_scores(gt_relations=gt_all[fm_key],pred_relations=pred_all[fm_key],min_pred_num=1)
+                        frame_metric[fm_key]["precision"].append(prec)
+                        frame_metric[fm_key]["recall"].append(rec)
+                    else:
+                        frame_metric[fm_key]["precision"].append(0.0)
+                        frame_metric[fm_key]["recall"].append(0.0)
 
                 
                 if len(GT_tripdata)>0 and len(frame_pred_triplets)>0:

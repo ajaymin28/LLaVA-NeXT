@@ -37,6 +37,7 @@ class InternVLChatConfig(PretrainedConfig):
             ps_version='v1',
             min_dynamic_patch=1,
             max_dynamic_patch=6,
+            init_lora_weights=True, # Jaimin
             **kwargs):
         super().__init__(**kwargs)
 
@@ -71,6 +72,7 @@ class InternVLChatConfig(PretrainedConfig):
         self.ps_version = ps_version  # pixel shuffle version
         self.min_dynamic_patch = min_dynamic_patch
         self.max_dynamic_patch = max_dynamic_patch
+        self.init_lora_weights = init_lora_weights # Jaimin
 
         logger.info(f'vision_select_layer: {self.select_layer}')
         logger.info(f'ps_version: {self.ps_version}')

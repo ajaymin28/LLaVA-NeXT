@@ -1,4 +1,6 @@
 import argparse
+import sys
+sys.path.append("/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat")
 
 import torch
 from internvl.model.internvl_chat import InternVLChatModel

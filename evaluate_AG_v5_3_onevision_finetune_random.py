@@ -10,7 +10,7 @@ from utils.utilities import pre_clean_prediction_data_v18
 from utils.utilities import calculate_accuracy_varying_lengths, remove_ids
 from utils.utilities import getRandomPrompt, SGSpecialTokens
 from utils.utilities import get_AG_annotations_framewise, get_shuffled_list
-from utils.utilities import AG_Objects,AG_relations
+from utils.utilities import AG_Objects,AG_relations,AG_OBJECTS_ALTERATIVES
 
 import argparse
 import os
@@ -525,6 +525,13 @@ if __name__=="__main__":
                 if fpred_o not in AG_Objects:
                     if fpred_o not in PredData["objects"]:
                         PredData["objects"].append(fpred_o)
+
+                fpred_s = AG_OBJECTS_ALTERATIVES.get(fpred_s,fpred_s)
+                fpred_o = AG_OBJECTS_ALTERATIVES.get(fpred_o,fpred_o)
+                pred_all["triplet"].append({"triplet": fpred, "score": 1.0})
+                pred_all["subject"].append({"triplet": fpred_s, "score": 1.0})
+                pred_all["predicate"].append({"triplet": fpred_p, "score": 1.0})
+                pred_all["object"].append({"triplet": fpred_o, "score": 1.0})
 
             for fm_key, fmdata in frame_metric.items():
                 """

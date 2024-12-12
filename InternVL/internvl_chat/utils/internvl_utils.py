@@ -9,7 +9,7 @@ from torchvision.transforms.functional import InterpolationMode
 from transformers import AutoModel, AutoTokenizer, AutoConfig
 
 import sys
-sys.path.append("/root/jbhoi/gits/LLaVA-NeXT/InternVL/internvl_chat")
+sys.path.append("/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat")
 from internvl.model.internvl_chat import InternVLChatModel
 
 
@@ -159,7 +159,7 @@ def load_model(model_path,max_new_tokens=3000,do_sample=False):
         model_path,
         # config=model_config,
         torch_dtype=torch.bfloat16,
-        load_in_8bit=True,
+        # load_in_8bit=True,
         low_cpu_mem_usage=True,
         use_flash_attn=True,
         trust_remote_code=True,

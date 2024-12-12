@@ -8,7 +8,7 @@ import os
 import copy
 import torch
 import sys
-sys.path.append("/root/jbhoi/gits/LLaVA-NeXT") # add util modules to path
+sys.path.append("/home/jbhol/dso/gits/LLaVA-NeXT") # add util modules to path
 
 from utils.utilities import eval_tagging_scores
 from utils.utilities import pre_clean_prediction_data_v18
@@ -42,7 +42,7 @@ import random
 from typing import Dict
 from utils.utilities import get_varying_list
 
-sys.path.append("/root/jbhoi/gits/LLaVA-NeXT/InternVL") # add InternVL util modules to path
+sys.path.append("/home/jbhol/dso/gits/LLaVA-NeXT/InternVL") # add InternVL util modules to path
 from internvl_chat.utils.internvl_utils import load_model
 from internvl_chat.utils.internvl_utils import get_model_response as get_internvl_model_response
 
@@ -143,9 +143,9 @@ if __name__=="__main__":
         #     raise Exception("Require prev_eval data path to continue previous eval")
 
     splits = ["test"]
-    AG_ROOT = "/root/jbhoi/gits/ActionGenome"
+    AG_ROOT = "/groups/sernam/datasets/ActionGenome/ActionGenome"
     VIDEO_ROOT_PATH = f"{AG_ROOT}/videos"
-    AG_ANNOTATIONS_DIR = f"{AG_ROOT}/Annotations"
+    AG_ANNOTATIONS_DIR = f"{AG_ROOT}/annotations"
     CHUNK_N = 1000 # Q&A will be chunked into CHUNK_N parts
     AG_Annotations,dataset_meta,video_frame_data = get_AG_annotations_framewise(AG_ANNOTATIONS_DIR=AG_ANNOTATIONS_DIR, 
                                                                                 subset=splits[0])
@@ -182,235 +182,244 @@ if __name__=="__main__":
         "predicate": {"precision": [], "recall": []},
         "triplet": {"precision": [], "recall": []} 
     }
-    
+
+    if args.subset and os.path.exists(args.subset):
+        samples2 = json.load(open(args.subset))
+
+
+    samples = []
 
     for val_id_idx,AG_Annotation in enumerate(AG_Annotations):
-
-        if val_id_idx<args.start_index:
-            ## To Continue unfinished job
-            pbar.n = val_id_idx
-            pbar.last_print_n = pbar.n
-            pbar.refresh()
-            continue
-
+        
         video_id, video_annotations = AG_Annotation
+        if not video_id in samples2:
+            continue
         video_path = os.path.join(VIDEO_ROOT_PATH,video_id)
         if not os.path.exists(video_path):
             print(f"[ERROR] video doesnt exist at: {video_path}")
             raise FileNotFoundError()
-        
-        
-        block_wise_GT_data = []
+
         frame_indices = []
         added_GT_triplets_frames = []
-        added_GT_triplets_bb = []
-        for frame_id, frame_triplets,frame_triplets_bb in video_annotations:
+        frame_block_index = 0
+        for frame_id, frame_triplets, frame_triplets_bb in video_annotations:
             frame_int_idx = int(frame_id.split(".")[0])
             # print(frame_id, frame_int_idx)
             added_GT_triplets_frames.append(frame_triplets)
-            added_GT_triplets_bb.append(list(frame_triplets_bb))
             frame_indices.append(frame_int_idx)
 
-            if len(frame_indices)>=8:
-                block_wise_GT_data.append({
+            if len(frame_indices)>=args.frame_num:
+                samples.append({
+                    "video_id": video_id,
+                    "video_path": video_path,
                     "frame_idxes": frame_indices,
+                    "frame_block_index": frame_block_index,
                     "triplets": added_GT_triplets_frames,
-                    "triplets_bb": added_GT_triplets_bb
                 })
 
                 frame_indices = []
                 added_GT_triplets_frames = []
-                added_GT_triplets_bb = []
+                frame_block_index += 1
 
-        
-        # print(f"remaining frames: {len(frame_indices)}")
         if len(frame_indices)>0:
             ## add remaning frames
-            block_wise_GT_data.append({
+            samples.append({
+                "video_id": video_id,
+                "video_path": video_path,
                 "frame_idxes": frame_indices,
+                "frame_block_index": frame_block_index,
                 "triplets": added_GT_triplets_frames,
-                "triplets_bb": added_GT_triplets_bb
             })
+
+    # if args.subset is not None:
+
+    #     import random
+    #     random.seed(42)
+
+    #     samples = random.sample(samples, args.subset)
+
+    #     json.dump(samples, open(f"data_prep/data/AG_samples_subset{args.subset}.json", "w"))
+
+
+    video_count = 0
+    for sample_idx, sample in enumerate(tqdm(samples)):
+
+        if sample_idx<args.start_index:
+            continue
+
         block_metric = {
             "subject": {"precision": [], "recall": []},
             "object": {"precision": [], "recall": []},
             "predicate": {"precision": [], "recall": []},
             "triplet": {"precision": [], "recall": []}
         }
-        last_processed_time = None
+        
+        Block_frame_ids = sample["frame_idxes"]
+        Block_GT_Triplets = sample["triplets"]
+        frame_block_index = sample["frame_block_index"]
+        video_id = sample["video_id"]
+        # video_path = sample["video_path"]
+        video_path = os.path.join(VIDEO_ROOT_PATH,video_id)
 
-        for frame_block_index, block_data in enumerate(block_wise_GT_data):
+        if video_id not in llava_response_json:
+            llava_response_json[video_id] = {}
+            llava_raw_response_json[video_id] = {}
+            video_count += 1
 
-            if last_processed_time is None:
-                last_processed_time = time.perf_counter()
-            
-            nowTime = time.perf_counter()
-            print(f"Processing video: {video_id} Block {frame_block_index}/{len(block_wise_GT_data)} last processed in:{round((nowTime-last_processed_time),4)}")
-            last_processed_time = nowTime
-
-            
-            Block_frame_ids = block_data["frame_idxes"]
-            Block_GT_Triplets = block_data["triplets"]
-
-            if video_id not in llava_response_json:
-                llava_response_json[video_id] = {}
-                llava_raw_response_json[video_id] = {}
-
-            if frame_block_index not in llava_response_json[video_id].keys():
-                llava_response_json[video_id][frame_block_index] = {}
-                llava_raw_response_json[video_id][frame_block_index] = {}
+        if frame_block_index not in llava_response_json[video_id].keys():
+            llava_response_json[video_id][frame_block_index] = {}
+            llava_raw_response_json[video_id][frame_block_index] = {}
 
 
-            outputs_unclean = get_model_output(prompt=AG_Prompt,file=video_path,batch_of_frames=Block_frame_ids)
-            outputs = pre_clean_prediction_data_v18(outputs_unclean["triplets"])
+        outputs_unclean = get_model_output(prompt=AG_Prompt,file=video_path,batch_of_frames=Block_frame_ids)
+        outputs = pre_clean_prediction_data_v18(outputs_unclean["triplets"])
 
 
+        llava_response_json[video_id][frame_block_index] = {
+            # "objects_list": outputs["objects_list"],
+            "triplets": outputs,
+            "frames": Block_frame_ids,
+            "GT_triplets": Block_GT_Triplets
+        }
 
-            llava_response_json[video_id][frame_block_index] = {
-                # "objects_list": outputs["objects_list"],
-                "triplets": outputs,
-                "frames": Block_frame_ids,
-                "GT_triplets": Block_GT_Triplets
-            }
-
-            llava_raw_response_json[video_id][frame_block_index] = {
-                "frames": Block_frame_ids,
-                "GT_triplets": Block_GT_Triplets,
-                "raw": outputs_unclean["triplets"],
-                "Prompt": AG_Prompt,
-                "cleaned_output": outputs
-            }
+        llava_raw_response_json[video_id][frame_block_index] = {
+            "frames": Block_frame_ids,
+            "GT_triplets": Block_GT_Triplets,
+            "raw": outputs_unclean["triplets"],
+            "Prompt": AG_Prompt,
+            "cleaned_output": outputs
+        }
 
 
-            try:
-                Block_GT_triplets_woids = remove_ids(Block_GT_Triplets,version="v2_1",remove_indexes=True)
-                Block_predicated_triplets_woids = remove_ids(outputs,version="v2_1",remove_indexes=True)
+        try:
+            Block_GT_triplets_woids = remove_ids(Block_GT_Triplets,version="v2_1",remove_indexes=True)
+            Block_predicated_triplets_woids = remove_ids(outputs,version="v2_1",remove_indexes=True)
+        except Exception as e:
+            print(f"error removing ids {e}")
+            pass
+
+        frame_metric = {
+            "subject": {"precision": [], "recall": []},
+            "object": {"precision": [], "recall": []},
+            "predicate": {"precision": [], "recall": []},
+            "triplet": {"precision": [], "recall": []}
+        }
+        for fidx, GT_tripdata in enumerate(Block_GT_triplets_woids):
+            results = None
+
+            frame_GT_triplets = GT_tripdata
+            frame_pred_triplets = []
+
+            try:frame_pred_triplets = Block_predicated_triplets_woids[fidx]
             except Exception as e:
-                print(f"error removing ids {e}")
                 pass
 
-            frame_metric = {
-                "subject": {"precision": [], "recall": []},
-                "object": {"precision": [], "recall": []},
-                "predicate": {"precision": [], "recall": []},
-                "triplet": {"precision": [], "recall": []}
-            }
-            for fidx, GT_tripdata in enumerate(Block_GT_triplets_woids):
-                results = None
+            if len(frame_pred_triplets) == 0:
+                continue
 
-                frame_GT_triplets = GT_tripdata
-                frame_pred_triplets = []
+            gt_relations = [] # {"triplet": ['adult', 'sitting', 'sofa'], "score": 1.0},
+            pred_relations = [] # {"triplet": ['adult', 'sitting', 'sofa'], "score": 1.0},
 
-                try:frame_pred_triplets = Block_predicated_triplets_woids[fidx]
+            gt_all = {"triplet": [],"subject": [],"object": [],"predicate": []}
+            pred_all = {"triplet": [],"subject": [],"object": [],"predicate": []}
+
+            for fgt in frame_GT_triplets:
+                fgt_s, fgt_p, fgt_o = fgt  # v3_1 changes
+                gt_all["triplet"].append({"triplet": fgt, "score": 1.0})
+                gt_all["subject"].append({"triplet": fgt_s, "score": 1.0})
+                gt_all["predicate"].append({"triplet": fgt_p, "score": 1.0})
+                gt_all["object"].append({"triplet": fgt_o, "score": 1.0})
+
+            for fpred in frame_pred_triplets:
+                fpred_s, fpred_p, fpred_o  = fpred # v3_1 changes
+                pred_all["triplet"].append({"triplet": fpred, "score": 1.0})
+                pred_all["subject"].append({"triplet": fpred_s, "score": 1.0})
+                pred_all["predicate"].append({"triplet": fpred_p, "score": 1.0})
+                pred_all["object"].append({"triplet": fpred_o, "score": 1.0})
+
+                if fpred_s not in AG_Objects:
+                    if fpred_s not in PredData["subjects"]:
+                        PredData["subjects"].append(fpred_s)
+                if fpred_p not in AG_relationsCombined:
+                    if fpred_p not in PredData["predicates"]:
+                        PredData["predicates"].append(fpred_p)
+                if fpred_o not in AG_Objects:
+                    if fpred_o not in PredData["objects"]:
+                        PredData["objects"].append(fpred_o)
+
+                fpred_s = AG_OBJECTS_ALTERATIVES.get(fpred_s,fpred_s)
+                fpred_o = AG_OBJECTS_ALTERATIVES.get(fpred_o,fpred_o)
+                pred_all["triplet"].append({"triplet": fpred, "score": 1.0})
+                pred_all["subject"].append({"triplet": fpred_s, "score": 1.0})
+                pred_all["predicate"].append({"triplet": fpred_p, "score": 1.0})
+                pred_all["object"].append({"triplet": fpred_o, "score": 1.0})
+
+            for fm_key, fmdata in frame_metric.items():
+                """
+                Eval score for each frame
+                """
+                prec, rec, hit_scores = eval_tagging_scores(gt_relations=gt_all[fm_key],pred_relations=pred_all[fm_key],min_pred_num=100)
+                frame_metric[fm_key]["precision"].append(prec)
+                frame_metric[fm_key]["recall"].append(rec)
+
+            
+            if len(GT_tripdata)>0 and len(frame_pred_triplets)>0:
+                try:
+                    results = calculate_accuracy_varying_lengths(gt_triplets=GT_tripdata,pred_triplets=frame_pred_triplets, remove_duplicates=False)
                 except Exception as e:
-                    pass
+                    print(f"error calculating score for vid {video_id} block:{frame_block_index} fidx {fidx} actual_fidx: {Block_frame_ids[fidx]}")
 
-                gt_relations = [] # {"triplet": ['adult', 'sitting', 'sofa'], "score": 1.0},
-                pred_relations = [] # {"triplet": ['adult', 'sitting', 'sofa'], "score": 1.0},
-
-                gt_all = {"triplet": [],"subject": [],"object": [],"predicate": []}
-                pred_all = {"triplet": [],"subject": [],"object": [],"predicate": []}
-
-                for fgt in frame_GT_triplets:
-                    fgt_s, fgt_p, fgt_o = fgt  # v3_1 changes
-                    gt_all["triplet"].append({"triplet": fgt, "score": 1.0})
-                    gt_all["subject"].append({"triplet": fgt_s, "score": 1.0})
-                    gt_all["predicate"].append({"triplet": fgt_p, "score": 1.0})
-                    gt_all["object"].append({"triplet": fgt_o, "score": 1.0})
-
-                for fpred in frame_pred_triplets:
-                    fpred_s, fpred_p, fpred_o  = fpred # v3_1 changes
-
-                    if fpred_s not in AG_Objects:
-                        if fpred_s not in PredData["subjects"]:
-                            PredData["subjects"].append(fpred_s)
-                    if fpred_p not in AG_relationsCombined:
-                        if fpred_p not in PredData["predicates"]:
-                            PredData["predicates"].append(fpred_p)
-                    if fpred_o not in AG_Objects:
-                        if fpred_o not in PredData["objects"]:
-                            PredData["objects"].append(fpred_o)
-
-                    fpred_s = AG_OBJECTS_ALTERATIVES.get(fpred_s,fpred_s)
-                    fpred_o = AG_OBJECTS_ALTERATIVES.get(fpred_o,fpred_o)
-                    pred_all["triplet"].append({"triplet": fpred, "score": 1.0})
-                    pred_all["subject"].append({"triplet": fpred_s, "score": 1.0})
-                    pred_all["predicate"].append({"triplet": fpred_p, "score": 1.0})
-                    pred_all["object"].append({"triplet": fpred_o, "score": 1.0})
-
-                for fm_key, fmdata in frame_metric.items():
-                    """
-                    Eval score for each frame
-                    """
-                    prec, rec, hit_scores = eval_tagging_scores(gt_relations=gt_all[fm_key],pred_relations=pred_all[fm_key],min_pred_num=1)
-                    frame_metric[fm_key]["precision"].append(prec)
-                    frame_metric[fm_key]["recall"].append(rec)
-
-                
-                if len(GT_tripdata)>0 and len(frame_pred_triplets)>0:
-                    try:
-                        results = calculate_accuracy_varying_lengths(gt_triplets=GT_tripdata,pred_triplets=frame_pred_triplets, remove_duplicates=False)
-                    except Exception as e:
-                        print(f"error calculating score for vid {video_id} block:{frame_block_index} fidx {fidx} actual_fidx: {Block_frame_ids[fidx]}")
-
-                    if results is not None:
-                        sg_eval_counts["correct_pred_triplets_cnt"] +=  results["correct_triplet_cnt"]
-                        sg_eval_counts["correct_obj_pred_cnt"] += results["correct_object_cnt"]
-                        sg_eval_counts["correct_subj_pred_cnt"] +=  results["correct_subject_cnt"]
-                        sg_eval_counts["correct_predicate_cnt"] +=  results["correct_predicate_cnt"]
-                        sg_eval_counts["gt_triplets_cnt"] +=  results["total_triplets"]
-                        sg_eval_counts["total_predicted_triplets"] += results["total_predicted_triplets"]
-                        sg_eval_counts["total_obj_cnt"] +=  results["total_objects"]
-                        sg_eval_counts["total_sub_cnt"] +=  results["total_subjects"]
-                        sg_eval_counts["total_pred_cnt"] +=  results["total_predicates"] 
-                else:
-                    pass
-                    # print(f"vid {video_id} block:{frame_block_index} fidx {fidx} actual_fidx:{Block_frame_ids[fidx]} lengt: {len(GT_tripdata)} lenpred: {frame_pred_triplets} outputs: {outputs}, unclean: {outputs_unclean}")
+                if results is not None:
+                    sg_eval_counts["correct_pred_triplets_cnt"] +=  results["correct_triplet_cnt"]
+                    sg_eval_counts["correct_obj_pred_cnt"] += results["correct_object_cnt"]
+                    sg_eval_counts["correct_subj_pred_cnt"] +=  results["correct_subject_cnt"]
+                    sg_eval_counts["correct_predicate_cnt"] +=  results["correct_predicate_cnt"]
+                    sg_eval_counts["gt_triplets_cnt"] +=  results["total_triplets"]
+                    sg_eval_counts["total_predicted_triplets"] += results["total_predicted_triplets"]
+                    sg_eval_counts["total_obj_cnt"] +=  results["total_objects"]
+                    sg_eval_counts["total_sub_cnt"] +=  results["total_subjects"]
+                    sg_eval_counts["total_pred_cnt"] +=  results["total_predicates"] 
+            else:
+                pass
+                # print(f"vid {video_id} block:{frame_block_index} fidx {fidx} actual_fidx:{Block_frame_ids[fidx]} lengt: {len(GT_tripdata)} lenpred: {frame_pred_triplets} outputs: {outputs}, unclean: {outputs_unclean}")
 
 
-            for bm_key, bmdata in block_metric.items():
-                """
-                    average eval score for each frame and appned it to block
-                """
-                if len(frame_metric[bm_key]["precision"])>0 and len(frame_metric[bm_key]["recall"])>0:
-                    block_metric[bm_key]["precision"].append(np.average(np.array(frame_metric[bm_key]['precision'])))
-                    block_metric[bm_key]["recall"].append(np.average(np.array(frame_metric[bm_key]['recall'])))
-        
+        for bm_key, bmdata in block_metric.items():
+            """
+                average eval score for each frame and appned it to block
+            """
+            if len(frame_metric[bm_key]["precision"])>0 and len(frame_metric[bm_key]["recall"])>0:
+                block_metric[bm_key]["precision"].append(np.average(np.array(frame_metric[bm_key]['precision'])))
+                block_metric[bm_key]["recall"].append(np.average(np.array(frame_metric[bm_key]['recall'])))
+    
         
         for oam_key, oamdata in overall_metric.items():
             """
                     average eval score for each block and appned it to overall
             """
             if len(block_metric[oam_key]["precision"])>0 and len(block_metric[oam_key]["recall"])>0:
-
                 overall_metric[oam_key]["precision"].append(round(float(np.average(np.array(block_metric[oam_key]['precision']))), 4))
                 overall_metric[oam_key]["recall"].append(round(float(np.average(np.array(block_metric[oam_key]['recall']))), 4))
 
-        try:
-            with open(f"{inference_prog_output_dir}/{val_id_idx}_{len(AG_Annotations)}.txt", "w") as f:
-                f.write(json.dumps(overall_metric, indent=4))
-        except Exception as e:
-            print(f"error saving file: {inference_prog_output_dir}/{val_id_idx}_{len(AG_Annotations)}.txt")
-        
-        pbar.n +=1
-        pbar.last_print_n = pbar.n
-        pbar.refresh()
+        # with open(f"{inference_prog_output_dir}/{val_id_idx}_{len(AG_Annotations)}.txt", "w") as f:
+        #     f.write(json.dumps(overall_metric, indent=4))
 
 
         sg_eval_counts["VRDFormer_Logic"] = {}
-        total_vid_ids = len(overall_metric["triplet"]["precision"])
+
         for metric_key, metric_values in overall_metric.items():
             if metric_key not in sg_eval_counts["VRDFormer_Logic"].keys():
                 sg_eval_counts["VRDFormer_Logic"][metric_key] = {}
             
             if len(overall_metric[metric_key]["precision"])>0 and len(overall_metric[metric_key]["recall"])>0:
-                overall_precision = np.average(np.array(overall_metric[metric_key]["precision"], dtype=np.float32))
-                overall_recall = np.average(np.array(overall_metric[metric_key]["recall"], dtype=np.float32))
+                overall_precision = np.average(np.array(overall_metric[metric_key]["precision"]))
+                overall_recall = np.average(np.array(overall_metric[metric_key]["recall"]))
                 sg_eval_counts["VRDFormer_Logic"][metric_key] = {
                     "Precision@1": round(float(overall_precision), 4),
                     "Recall@1": round(float(overall_recall), 4),
                 }
-        sg_eval_counts["VRDFormer_Logic"]["TotalVideos"] = total_vid_ids
+        sg_eval_counts["VRDFormer_Logic"]["TotalVideos"] = video_count
+        sg_eval_counts["VRDFormer_Logic"]["TotalSamples"] = sample_idx - args.start_index + 1
 
         try:
             sg_eval_counts["dataset_meta"] ={
@@ -420,27 +429,29 @@ if __name__=="__main__":
         except Exception as e:
             pass
 
-        try:
-            # outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_{version}.json"
-            outputfile = f"{inference_output_dir}/results.json"
-            with open(outputfile, "w") as f:
-                json.dump(llava_response_json,f, indent=4)
-        except Exception as e:
-            print(f"error saving file: {e}")
+        if video_count % args.save_every_n_videos == 0 or sample_idx == len(samples) - 1:
 
-        try:
-            outputfile = f"{inference_output_dir}/{dataset_name}_inference_val_raw_response_{version}.json"
-            outputfile = f"{inference_output_dir}/results_raw_response.json"
-            with open(outputfile, "w") as f:
-                json.dump(llava_raw_response_json,f, indent=4)
-        except Exception as e:
-            print(f"error saving file: {e}")
+            try:
+                outputfile = f"{inference_output_dir}/{dataset_name_to_save}_inference_val.json"
+                # outputfile = f"{inference_output_dir}/results.json"
+                with open(outputfile, "w") as f:
+                    json.dump(llava_response_json,f, indent=4)
+            except Exception as e:
+                print(f"error saving file: {e}")
 
-        try:
-            outputfile = f"{inference_output_dir}/results_eval_data.json"
-            with open(outputfile, "w") as f:
-                json.dump(sg_eval_counts,f, indent=4)
-        except Exception as e:
-            print(f"error saving file: {e}")
+            try:
+                outputfile = f"{inference_output_dir}/{dataset_name_to_save}_inference_val_raw_response.json"
+                # outputfile = f"{inference_output_dir}/results_raw_response.json"
+                with open(outputfile, "w") as f:
+                    json.dump(llava_raw_response_json,f, indent=4)
+            except Exception as e:
+                print(f"error saving file: {e}")
+
+            try:
+                outputfile = f"{inference_output_dir}/{dataset_name_to_save}_results_eval_data.json"
+                with open(outputfile, "w") as f:
+                    json.dump(sg_eval_counts,f, indent=4)
+            except Exception as e:
+                print(f"error saving file: {e}")
 
        
