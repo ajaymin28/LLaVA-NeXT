@@ -1,4 +1,4 @@
-from utils.utilities import load_annotations
+from utils.utilities import load_AG_annotations
 from utils.utilities import getConvBlock, getPromptTemplate, getRandomPrompt, get_shuffled_list, chunk_list
 import json
 from tqdm import tqdm
@@ -14,21 +14,21 @@ def parse_arguments():
     parser.add_argument(
         "--video_root_path",
         type=str,
-        default="/groups/sernam/datasets/ActionGenome/Charades_v1_480",
+        default="/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
         help="Root path to the video files."
     )
     
     parser.add_argument(
         "--output_json_dir",
         type=str,
-        default="/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations_v5_3",
+        default="/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations_v5_3_test",
         help="Directory to save the output JSON annotations."
     )
     
     parser.add_argument(
         "--ag_annotations_dir",
         type=str,
-        default="/groups/sernam/datasets/ActionGenome/ActionGenome/annot_data",
+        default="/groups/sernam/datasets/ActionGenome/ActionGenome/annotations",
         help="Directory containing ActionGenome annotation data."
     )
     
@@ -56,7 +56,7 @@ if __name__=="__main__":
 
     os.makedirs(OUTPUT_JSON_DIR,exist_ok=True)
 
-    object_anno, person_anno, frame_list = load_annotations(annotation_dir=AG_ANNOTATIONS_DIR)
+    object_anno, person_anno, frame_list = load_AG_annotations(annotation_dir=AG_ANNOTATIONS_DIR)
 
     assert set(object_anno.keys()) == set(person_anno.keys())
     assert len(object_anno) == len(frame_list)
@@ -161,7 +161,7 @@ if __name__=="__main__":
 
     # prepare annotations videoid->blocks->frames->triplets
     overall_annotations = []
-    for video_id in tqdm(video_ids_by_set["train"]):
+    for video_id in tqdm(video_ids_by_set["test"]):
         video_data = video_frame_data[video_id]
 
         frame_block_triplets = []

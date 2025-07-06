@@ -1,9 +1,9 @@
 {
     "action_genome_v5_3_split0": {
       "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
-      "annotation": "./shell/data/ActionGenome/AG_internvl_annotations_v5_3/videochatgpt_tune_AG_part0.jsonl",
+      "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part0.jsonl",
       "data_augment": false,
       "repeat_time": 1,
       "length": 1000
     }
-  }
+}

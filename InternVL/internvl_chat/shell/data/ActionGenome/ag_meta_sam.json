@@ -1,0 +1,9 @@
+{
+    "action_genome_v5_3_split0": {
+      "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+      "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/Sam/AG_llava_annotations_v5_3_siglip_sorted.jsonl",
+      "data_augment": false,
+      "repeat_time": 1,
+      "length": 21378
+    }
+}

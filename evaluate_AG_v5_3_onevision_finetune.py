@@ -487,7 +487,17 @@ if __name__=="__main__":
             file = video_path if isinstance(video_path, list) else [video_path]
             args.video_path = video_path
             set_video(args=args, video_frame_index=Block_frame_ids)
+
+            import time
+
+            start = time.perf_counter()
+
             outputs_unclean = get_model_output(prompt=AG_Prompt,file=file,batch_of_frames=Block_frame_ids)
+
+            end = time.perf_counter()
+
+            print(f"infenrecne done in : {end-start}s")
+
             outputs = pre_clean_prediction_data_v18(outputs_unclean["triplets"])
 
 

@@ -1,0 +1,9 @@
+{
+    "llava_instruct_vrd_1k_p0": {
+      "root": "/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/videos",
+      "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/VRD/video_llava_vidvrd_annotations_v5_3_shuffled/videochatgpt_tune_part0.jsonl",
+      "data_augment": false,
+      "repeat_time": 1,
+      "length": 1000
+    }
+}

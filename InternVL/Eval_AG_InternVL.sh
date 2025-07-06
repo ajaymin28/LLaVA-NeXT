@@ -14,3 +14,6 @@ CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/InternVL/evaluate_
 
 
 
+CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/InternVL/evaluate_perplexity_vidvrd_v5_3_internvl_finetune.py \
+    --model-path=/groups/sernam/VideoSGG/checkpoints/internvl8B/VRD_P09_internvl2_lora_r256_llm_merged  \
+    --output_dir=/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/output/perplexity/[test][internvl]_VRD_p00_e01

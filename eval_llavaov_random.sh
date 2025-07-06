@@ -17,6 +17,24 @@ CUDA_VISIBLE_DEVICES=0 python evaluate_AG_v5_3_onevision_finetune_random.py \
     --temperature 10.0 \
     --subset /root/LLaVA-NeXT/ag_subset_100.json
 
+CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_AG_v5_3_ov_ft_random_w_termporal.py \
+    --model-base lmms-lab/llava-onevision-qwen2-7b-si \
+    --model-path /home/jbhol/dso/gits/LLaVA-NeXT/work_dirs/vrd/llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-AG_v7_uprompt_split023_olora256_512_llm \
+    --output_dir /home/jbhol/dso/gits/ActionGenome/inference_out/llava_ov/AG/AG_P023_V7_1kSamples \
+    --conv-mode qwen_2 \
+    --subset 1000
+
+
+CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_vidvrd_v5_3_onevisionWithID_FT_Quad.py \
+    --model-base lmms-lab/llava-onevision-qwen2-7b-si \
+    --model-path /home/jbhol/dso/gits/LLaVA-NeXT/work_dirs/vrd/llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-VRD_v5_3_Quad_split09_olora256_512_llm \
+    --output_dir /home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/inference_outputs/llava_ov/[test]lora_llava_ov_vidvrd_annotations_v5_3_p09_e01_Quad_FT \
+    --conv-mode qwen_2
+
+
+
+
+
 
 
                 # "--model-path",

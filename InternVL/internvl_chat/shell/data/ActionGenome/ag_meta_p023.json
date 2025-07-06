@@ -1,0 +1,171 @@
+{
+    "action_genome_v5_3_split0": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part0.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split1": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part1.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split2": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part2.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split3": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part3.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split4": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part4.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split5": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part5.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split6": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part6.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split7": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part7.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split8": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part8.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split9": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part9.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split10": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part10.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split11": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part11.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split12": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part12.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split13": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part13.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split14": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part14.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split15": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part15.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split16": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part16.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split17": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part17.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split18": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part18.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split19": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part19.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split20": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part20.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split21": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part21.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split22": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part22.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 1000
+    },
+    "action_genome_v5_3_split23": {
+        "root": "/groups/sernam/datasets/ActionGenome/ActionGenome/videos",
+        "annotation": "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/AG_llava_annotations_v5_3/videochatgpt_tune_AG_part23.jsonl",
+        "data_augment": false,
+        "repeat_time": 1,
+        "length": 736
+    }
+
+}

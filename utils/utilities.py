@@ -11,6 +11,8 @@ import cv2
 from tqdm import tqdm
 import json
 from prompt_magic.TaskDescription import Task_description_v10_sam
+import re
+from collections import defaultdict
 
 AG_OBJECTS_ALTERATIVES = {
     "cup": "cup/glass/bottle",
@@ -274,8 +276,10 @@ def remove_ids(frames_tripletes, version="v2_1", remove_indexes=False):
     for f_idx, triplets in enumerate(frames_tripletes):
         for idx, trip in enumerate(triplets):
             if version=="v2_1":
+                # predicate in middle
                 subj, rel, obj = trip
             elif version=="v3_1":
+                # predicate last
                 subj, obj, rel = trip
             
             subj = subj.split("-")[0]
@@ -1069,6 +1073,47 @@ def pre_clean_prediction_data_onevision_v14_AG(model_response, fileData=None, re
 
     return block_triplets
 
+
+def pre_clean_prediction_data_onevision_v5_3_FT_Quad_vrd(model_response, fileData=None, remove_entity_idx=False, contains_temporal_entity=False):
+    """
+    Quadruplets for spatial + action predicates
+    """
+    block_triplets = {
+        "quadruplets": [[] for i in range(8)],
+        "triplets": [[] for i in range(8)],
+        "scene": [],
+        "description": [],
+        "objects": []
+    }
+    prediction_data = model_response
+    prediction_data = prediction_data.strip("</s>").lower()
+
+
+    frame_blocks = re.findall(r'#frameid(.*?)(?=#frameid|#sgend)', prediction_data)
+
+    for idx, block in enumerate(frame_blocks):
+        quadruplets = re.findall(r'\[(.*?)\]', block)
+        for quad in quadruplets:
+            quad_list = quad.split(':')
+
+            predicate_joined = " ".join(quad_list[2:])
+            if quad_list[-1].lower()=="na":
+                predicate_joined = quad_list[2]
+            
+
+            triplet = [quad_list[0], predicate_joined, quad_list[1]]
+            if idx < len(block_triplets["quadruplets"]):
+                block_triplets["quadruplets"][idx].append(quad_list)
+                block_triplets["triplets"][idx].append(triplet)
+
+    # print(block_triplets)
+
+
+
+
+    return block_triplets
+
+
 def pre_clean_prediction_data_onevision_v14_vrd(model_response, fileData=None, remove_entity_idx=False, contains_temporal_entity=False):
     """
     Quadruplets for spatial + action predicates
@@ -1096,9 +1141,6 @@ def pre_clean_prediction_data_onevision_v14_vrd(model_response, fileData=None, r
     else:
         cleanString = prediction_data
 
-    # cleanString = re.sub(r"(frame-\d+)", r"'\1'", cleanString)
-
-    # print(cleanString)
     try:
         # print("evaluating")
         evaluated_string_json = eval(cleanString.replace("#sg_end", ""))
@@ -1225,6 +1267,38 @@ def pre_clean_temporal_triplets(model_response, fileData=None, remove_entity_idx
         print(f"erro parsing triplet data: {e},{fileData}")
 
     
+    return block_triplets
+
+def pre_clean_prediction_data_onevision_FT_v7(model_response, fileData=None, remove_entity_idx=False, contains_temporal_entity=False):
+    block_triplets = {
+        "triplets": [[] for i in range(8)],
+        "scene": [],
+        "description": [],
+        "objects": []
+    }
+    prediction_data = model_response
+    prediction_data = prediction_data.strip("</s>").lower()
+
+    try:
+        evaluated_string = prediction_data.replace("#sg_end", "")
+
+        pattern = re.compile(r'\[(.*?)\]_\[frame-(\d+):frame-(\d+)\]')
+        matches = pattern.findall(evaluated_string)
+
+        for triplet, start_frame, end_frame in matches:
+            triplet_list = triplet.split(':')
+            if len(triplet_list)!=3:
+                continue
+            start_frame, end_frame = int(start_frame), int(end_frame)
+            for frame_idx in range(start_frame, end_frame + 1):
+                if frame_idx < len(block_triplets["triplets"]):
+                    block_triplets["triplets"][frame_idx].append(triplet_list)
+    except Exception as e:
+        print(e, fileData)
+        # print("model response", model_response)
+        pass
+
+
     return block_triplets
 
 def pre_clean_prediction_data_onevision_v7(model_response, fileData=None, remove_entity_idx=False, contains_temporal_entity=False):
@@ -1680,6 +1754,21 @@ prompts_list = {
       "What is the relationship between [{sub}:{obj}] in the video. Use only the provided lists for predicates. Predicates: {predicates}" # {} to be replaced by actual value
     ],
 
+    "AG_Prompt_Temporal" : [
+      """
+      You are given a list of predefined objects={objects_list} and three different types of predicates list. 
+      1.Attention={attention_relations},
+      2.Spatial={spatial_relations} and 
+      3.Contacting={contacting_relations}
+
+      Attention relationship indicates whether the person is visually focused on the object in the scene.
+      Spatial relationship describes the object's position relative to the person within the scene.
+      Contacting relationship specifies the physical interaction or contact between the person and the object.
+
+      Your task is to identify relationships between person and predefined objects visible in the provided video in the format [Subject:Predicate:Object]_[Frame-start:Frame-end].
+      """
+    ],
+
     "AG_Prompt" : [
       """
       You are given a list of predefined objects={objects_list} and three different types of predicates list. 
@@ -1771,7 +1860,16 @@ prompts_list = {
       Predicates: {predicates}
       """
     ],
-    "v10_sam": [Task_description_v10_sam]
+    "v10_sam": [Task_description_v10_sam],
+
+    "quad_vrd_prompt": [
+      """You are given a list of predefined subjects, objects, action predicates and spatial predicates. Your task is to predict scene graph quadruplets in the format [Subject-id:Object-id:action predicate:spatial predicate] based on the given scene in the video. Use only the provided lists for subject, objects,action predicates and spatial predicates. \n\
+      Subjects: {subjects} \n\
+      Action Predicates: {action_predicates} \n\
+      Spatial Predicates: {spatial_predicates} \n\
+      Objects: {objects} \n\
+      """
+    ]
 
 
 }

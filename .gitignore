@@ -78,3 +78,5 @@ data_prep/data/
 *.png
 results/
 GroundingDINO/*
+
+scripts/video

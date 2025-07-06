@@ -336,7 +336,7 @@ class InternVLChatModel(PreTrainedModel):
 
     def chat(self, tokenizer, pixel_values, question, generation_config, history=None, return_history=False,
              num_patches_list=None, IMG_START_TOKEN='<img>', IMG_END_TOKEN='</img>', IMG_CONTEXT_TOKEN='<IMG_CONTEXT>',
-             verbose=False):
+             verbose=False, calc_perplexity=False, map_fn=None):
 
         if history is None and pixel_values is not None and '<image>' not in question:
             question = '<image>\n' + question
@@ -372,22 +372,102 @@ class InternVLChatModel(PreTrainedModel):
         input_ids = model_inputs['input_ids'].cuda()
         attention_mask = model_inputs['attention_mask'].cuda()
         generation_config['eos_token_id'] = eos_token_id
+
+        perplexities = []
+        word_map = None
+        if calc_perplexity:
+            generation_config["output_logits"] = True
+            generation_config["return_dict_in_generate"] = True
+
         generation_output = self.generate(
             pixel_values=pixel_values,
             input_ids=input_ids,
             attention_mask=attention_mask,
             **generation_config
         )
+
+
+        if calc_perplexity:
+            generation_output_seq_ids = generation_output["sequences"] # predicted ids
+            logits = generation_output["logits"]
+
+            response = tokenizer.batch_decode(generation_output_seq_ids, skip_special_tokens=True)[0]
+            response = response.split(template.sep.strip())[0].strip()
+
+            outputs_cleaned = response.replace("\n", " ").replace("   ", " ").replace("  ", " ")
+            outputs_cleaned = outputs_cleaned.replace("   ", " ")
+            outputs_cleaned = outputs_cleaned.replace("  ", " ")
+            outputs_cleaned = outputs_cleaned.replace("#sg_start", "")
+            outputs_cleaned = outputs_cleaned.replace("#sg_end", "")
+            outputs_cleaned = outputs_cleaned.replace("#frameid", "#frameid ")
+            outputs_cleaned = outputs_cleaned.replace(":", " : ")
+            outputs_cleaned = outputs_cleaned.replace(";", " ; ")
+            outputs_cleaned = outputs_cleaned.strip()
+
+            target = tokenizer([response], return_tensors="pt", padding=True, truncation=True)
+            target_input_ids = target["input_ids"].cuda()
+            target_attention_masks = target_input_ids.ne(tokenizer.pad_token_id).long().cuda() #attn mask for decoded tokens
+            target["attension_mask"] = target_attention_masks
+
+            stacked_logits = torch.stack(logits, dim=1).cuda()
+            shift_logits = stacked_logits[:, :, :]  # Ignore the last token's logits
+            shift_labels = target_input_ids[:, :]   # Skip the first token in the labels
+
+            # Compute log probabilities
+            log_probs = torch.nn.functional.log_softmax(shift_logits, dim=-1)
+
+            if log_probs.size(1)==0:
+                return None,None
+            
+            if shift_labels.size(-1)==0:
+                return None,None
+            
+
+            # FIX: if logits size is mismatch then adjust the logits or labels
+            if log_probs.size(1) != shift_labels.size(1):
+                absdiff = abs(log_probs.size(1) - shift_labels.size(1))
+                if log_probs.size(1)>shift_labels.size(1):
+                    log_probs = log_probs[:,:-absdiff,:]
+                else:
+                    shift_labels = shift_labels[:,:-absdiff]
+                    target_attention_masks = target_attention_masks[:,:-absdiff]
+
+            
+            target_log_probs = log_probs.gather(dim=-1, index=shift_labels.unsqueeze(-1)).squeeze(-1)
+            target_log_probs = target_log_probs * target_attention_masks[:, :].to(log_probs.dtype)
+
+            tokens = tokenizer.convert_ids_to_tokens(shift_labels[0].cpu().numpy(), skip_special_tokens=True)
+
+            word_map = map_fn(tokens, target_log_probs[0].tolist(), outputs_cleaned)
+
+            # Compute the mean negative log-likelihood for each sequence
+            negative_log_likelihood = -target_log_probs.sum(dim=-1) / target_attention_masks[:, :].sum(dim=-1)
+
+            # Compute perplexity for each sequence
+            perplexity = torch.exp(negative_log_likelihood)
+            # Take mean of perplexities of each batch
+            mean_perplexity_score = torch.mean(perplexity)
+            # perplexities = perplexities.tolist()
+
+            perplexities.append(mean_perplexity_score.cpu().numpy())
+
+
         response = tokenizer.batch_decode(generation_output, skip_special_tokens=True)[0]
         response = response.split(template.sep.strip())[0].strip()
         history.append((question, response))
+
         if return_history:
+            if calc_perplexity:
+                return response,history,perplexity,word_map
             return response, history
         else:
             query_to_print = query.replace(IMG_CONTEXT_TOKEN, '')
             query_to_print = query_to_print.replace(f'{IMG_START_TOKEN}{IMG_END_TOKEN}', '<image>')
             if verbose:
                 print(query_to_print, response)
+            
+            if calc_perplexity:
+                response,perplexity,word_map
             return response
 
     @torch.no_grad()

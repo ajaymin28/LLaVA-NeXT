@@ -5,13 +5,14 @@ import os
 # OUTPUT_DIR = "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/VRD/video_llava_vidvrd_annotations_v5_3_shuffled"
 # annotations = os.listdir(f"{INPUT_ANNOTATIONS_PATH}")
 
-INPUT_ANNOTATIONS_PATH = "/home/jbhol/dso/gits/LLaVA-NeXT/data_prep/data/AG_llava_annotations_v5_3"
-OUTPUT_DIR = "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/AG_llava_annotations_v5_3"
+INPUT_ANNOTATIONS_PATH = "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/Sam"
+OUTPUT_DIR = "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/Sam_jsonl"
 annotations = os.listdir(f"{INPUT_ANNOTATIONS_PATH}")
 
 os.makedirs(OUTPUT_DIR,exist_ok=True)
 
 for annotation in annotations:
+    print(f"{INPUT_ANNOTATIONS_PATH}/{annotation}")
     with open(f"{INPUT_ANNOTATIONS_PATH}/{annotation}", "r") as f:
         data = json.load(f)
     for i in range(len(data)):

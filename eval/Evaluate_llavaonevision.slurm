@@ -66,13 +66,21 @@ module load cuda/cuda-12.1.0
 
 
 ## LLAVA OV LORA All mm_tune P0 E1 
-CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_AG_v5_3_onevision_finetune.py --model-base lmms-lab/llava-onevision-qwen2-7b-si --model-path=/home/jbhol/dso/gits/LLaVA-NeXT/work_dirs/llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-AG_v5_3_split0_olora256_all_mm_tune_512_llm --output_dir=/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations/inference_output/[test][onevision]_AG_annotations_v5_3_p00_e01_all_mm_tune --conv-mode=qwen_2
+CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_AG_v5_3_onevision_finetune.py --model-base lmms-lab/llava-onevision-qwen2-7b-si --model-path=/groups/sernam/VideoSGG/checkpoints/llava_ov/llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-AG_v5_3_split0_olora256_all_mm_tune_512_llm --output_dir=/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations/inference_output/[TEMP][test][onevision]_AG_annotations_v5_3_p00_e01_all_mm_tune --conv-mode=qwen_2
 
 ## LLAVA OV LORA All mm_tune P02 E1 
 ##CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_AG_v5_3_onevision_finetune.py --model-base lmms-lab/llava-onevision-qwen2-7b-si --model-path=/home/jbhol/dso/gits/LLaVA-NeXT/work_dirs/llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-AG_v5_3_split0_2_olora256_all_mm_tune_512_llm --output_dir=/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations/inference_output/[test][onevision]_AG_annotations_v5_3_p02_e01_all_mm_tune --conv-mode=qwen_2
 
 
 
+## perplexity
+CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_perplexity_AG_v5_3_onevision_finetune.py --model-base lmms-lab/llava-onevision-qwen2-7b-si --model-path=/groups/sernam/VideoSGG/checkpoints/llava_ov/llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-AG_v5_3_split0_23_all_mm_tune_olora256_512_llm --conv-mode=qwen_2
+
+## perplexity zs
+CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_perplexity_ZS_AG_v5_3_onevision.py --model-path=lmms-lab/llava-onevision-qwen2-7b-si --conv-mode=qwen_2
+
+# vrd ft
+CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_perplexity_vidvrd_v5_3_onevision_finetune.py --model-base lmms-lab/llava-onevision-qwen2-7b-si  --model-path=/groups/sernam/VideoSGG/checkpoints/llava_ov/vrd/llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-VRD_v5_3_split03_all_mm_tune_olora256_512_llm --output_dir=/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/inference_outputs_onevision/TEMP --conv-mode=qwen_2
 
 CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/Infer_WOGT_AG_v5_3_onevision_finetune.py \
     --model-path=/groups/sernam/VideoSGG/checkpoints/llava_ov/llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-AG_v5_3_split0_olora256_all_mm_tune_512_llm  \
@@ -85,4 +93,26 @@ CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/evaluate_AG_v5_3_o
     --model-path=/home/jbhol/dso/gits/LLaVA-NeXT/work_dirs/AG/vidnorm/llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-AG_v5_3_split00_ep01_olora256_512_llm_withbb_vidnorm \
     --model-base lmms-lab/llava-onevision-qwen2-7b-si \
     --output_dir=/home/jbhol/dso/gits/ActionGenome/AG_llava_annotations/inference_output/bb/vidnorm/[test][onevision]_AG_annotations_v5_3_p00_e01_bb \
+    --conv-mode=qwen_2
+
+
+
+CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/Infer_WOGT_vidvrd_v5_3_onevision_finetune.py \
+    --model-path=/groups/sernam/VideoSGG/checkpoints/llava_ov/vrd/llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-VRD_v5_3_split03_all_mm_tune_olora256_512_llm \
+    --model-base lmms-lab/llava-onevision-qwen2-7b-si \
+    --output_dir=[TEMP][test][onevision][wogt]_vidvrd_annotations_v5_3_p03 \
+    --conv-mode=qwen_2
+
+
+
+
+# GDINO
+CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/get_bbox_from_vrd.py --result_path=/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/output/[test][internvl]_VRD_p00_e01/results.json
+CUDA_VISIBLE_DEVICES=1 python /home/jbhol/dso/gits/LLaVA-NeXT/get_bbox_from_vrd.py --result_path=/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/output/[test][internvl]_VRD_p09_e01/results.json
+
+
+
+
+CUDA_VISIBLE_DEVICES=0 python /home/jbhol/dso/gits/LLaVA-NeXT/Infer_fake_news_dataset.py \
+    --output_dir=/home/jbhol/dso/gits/NewsVideoDataset/LLLAVA_OV_OUTPUT/news_ds2 \
     --conv-mode=qwen_2

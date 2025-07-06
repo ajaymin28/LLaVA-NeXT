@@ -1,0 +1,2 @@
+CUDA_VISIBLE_DEVICES=0  python /home/jbhol/dso/gits/LLaVA-NeXT/InternVL/evaluate_vidvrd_v5_3_internvl_ZS.py \
+    --output_dir=/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/inference_outputs/internvl/ZS

@@ -100,6 +100,7 @@ class LlavaQwenForCausalLM(Qwen2ForCausalLM, LlavaMetaForCausalLM):
             return logits, labels
 
         else:
+            
             return super().forward(
                 input_ids=input_ids,
                 attention_mask=attention_mask,

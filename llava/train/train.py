@@ -1530,7 +1530,6 @@ def train(attn_implementation=None):
             target_modules=find_all_linear_names(model),
             lora_dropout=training_args.lora_dropout,
             bias=training_args.lora_bias,
-            # use_rslora=training_args.use_rslora,  # latest peft required.
             # use_rslora=training_args.use_rslora,
             task_type="CAUSAL_LM",
             init_lora_weights=training_args.init_lora_weights,
@@ -1705,6 +1704,10 @@ def train(attn_implementation=None):
         trainable_params = sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters() if p.requires_grad)
         rank0_print(f"Total parameters: ~{total_params/1e6:.2f} MB)")
         rank0_print(f"Trainable parameters: ~{trainable_params/1e6:.2f} MB)")
+
+        total_params = sum(1 for p in model.parameters())
+        trainable_params = sum(1 for p in model.parameters() if p.requires_grad)
+        rank0_print(f"Total Params: {total_params} Trainable: {trainable_params}")
         if training_args.bits in [4, 8]:
             model.get_model().mm_projector.to(dtype=compute_dtype, device=training_args.device)
 

@@ -13,7 +13,11 @@ echo $LD_LIBRARY_PATH
 # Set up the data folder
 IMAGE_FOLDER="/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/videos"
 VIDEO_FOLDER="/home/jbhol/dso/gits/VRDFormer_VRD/data/vidvrd/videos"
-DATA_YAML="/home/jbhol/dso/gits/LLaVA-NeXT/scripts/video/train/VRD_P03_exp.yaml" # e.g exp.yaml
+# IMAGE_FOLDER="/groups/sernam/datasets/ActionGenome/ActionGenome/videos"
+# VIDEO_FOLDER="/groups/sernam/datasets/ActionGenome/ActionGenome/videos"
+# DATA_YAML="/home/jbhol/dso/gits/LLaVA-NeXT/scripts/video/train/exp_w_temp.yaml" # e.g exp.yaml
+DATA_YAML="/home/jbhol/dso/gits/LLaVA-NeXT/scripts/video/train/exp_VRD_Quad.yaml" # e.g exp.yaml
+
 
 # source ~/.bashrc
 # conda activate vlnext
@@ -44,7 +48,7 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
-MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-VRD_v5_3_split03_olora256_512_llm"
+MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-VRD_v5_3_Quad_split09_olora256_512_llm"
 #PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-ov-si"  
 PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-si" 
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"

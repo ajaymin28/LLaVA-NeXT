@@ -5,6 +5,7 @@ import numpy as np
 import time
 from utils.utilities import eval_tagging_scores
 from utils.utilities import pre_clean_prediction_data_v18
+
 from utils.utilities import calculate_accuracy_varying_lengths, remove_ids
 from utils.utilities import getRandomPrompt, SGSpecialTokens
 from data_prep.vidvrd2dataset import VidVRD, VidOR

@@ -9,7 +9,6 @@ from prompt_magic import Prompts
 Prompts_ = {
     "default": Prompts.v14_Task_description_AG_triplets_ZS,
     "version_14_AG_ZS_triplets": Prompts.v14_Task_description_AG_triplets_ZS,
-    
     "version_14_AG_sgcls": Prompts.v14_Task_description_AG_triplets_sgcls,
     "version_14_vidor_triplets": Prompts.v14_prompt_vidor_triplets_withIds_without_obj_list,
     "version_14_vidor_quadruplets": Prompts.v14_prompt_vidor_quadruplets_withIds_without_obj_list,
@@ -32,6 +31,6 @@ Prompts_ = {
     "version_1": Prompts.v1_prompt
 }
 
-with open("/root/jbhoi/gits/LLaVA-NeXT/prompts.pkl", "wb") as f:
+with open("/home/jbhol/dso/gits/LLaVA-NeXT/prompts.pkl", "wb") as f:
     pickle.dump(Prompts_, f, protocol=pickle.HIGHEST_PROTOCOL)
     # pickle.dump(Prompts,f)

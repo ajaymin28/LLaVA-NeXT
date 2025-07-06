@@ -1,7 +1,7 @@
 set -x
 
 module load cuda/cuda-12.1.0
-unset LD_LIBRARY_PATH
+# unset LD_LIBRARY_PATH
 
 source ~/.bashrc
 conda activate internvl
@@ -11,7 +11,7 @@ BATCH_SIZE=${BATCH_SIZE:-16}
 PER_DEVICE_BATCH_SIZE=${PER_DEVICE_BATCH_SIZE:-4}
 GRADIENT_ACC=$((BATCH_SIZE / PER_DEVICE_BATCH_SIZE / GPUS))
 
-
+export WANDB_PROJECT="InternVL_SGG_AG_Lora_SamSorted"
 
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 export MASTER_PORT=34229
@@ -20,11 +20,14 @@ export LAUNCHER=pytorch
 
 # get datetime
 NOW=$(date +"%m.%d_%H:%M")
-OUTPUT_DIR="/groups/sernam/VideoSGG/checkpoints/internvl8B/${NOW}_ag_internvl2_lora_r16_llm"
+OUTPUT_DIR="/groups/sernam/VideoSGG/checkpoints/internvl8B/AG/${NOW}/AG_Sorted21378_internvl2_lora_r256_llm"
+# OUTPUT_DIR="/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/checkpoints/internvl8B/lora_with_tunables/VRD/${NOW}/VRD_P09_internvl2_lora_r256_llm"
 
 if [ ! -d "$OUTPUT_DIR" ]; then
   mkdir -p "$OUTPUT_DIR"
 fi
+
+# --meta_path "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/ag_meta.json"  \
 
 # number of gpus: 2
 # batch size per gpu: 4
@@ -41,16 +44,17 @@ torchrun \
   --model_name_or_path "OpenGVLab/InternVL2-8B" \
   --conv_style "internlm2-chat" \
   --output_dir ${OUTPUT_DIR} \
-  --meta_path "./shell/data/ActionGenome/ag_meta.json" \
+  --meta_path "/home/jbhol/dso/gits/LLaVA-NeXT/InternVL/internvl_chat/shell/data/ActionGenome/ag_meta_sam.json" \
   --overwrite_output_dir True \
   --force_image_size 448 \
   --max_dynamic_patch 6 \
   --down_sample_ratio 0.5 \
   --drop_path_rate 0.0 \
-  --freeze_llm True \
-  --freeze_mlp True \
-  --freeze_backbone True \
-  --use_llm_lora 16 \
+  --freeze_llm False \
+  --freeze_mlp False \
+  --freeze_backbone False \
+  --use_backbone_lora 256 \
+  --use_llm_lora 256 \
   --vision_select_layer -1 \
   --dataloader_num_workers 4 \
   --bf16 True \
@@ -59,7 +63,7 @@ torchrun \
   --gradient_accumulation_steps ${GRADIENT_ACC} \
   --evaluation_strategy "no" \
   --save_strategy "steps" \
-  --save_steps 200 \
+  --save_steps 10000 \
   --save_total_limit 1 \
   --learning_rate 4e-5 \
   --weight_decay 0.01 \
@@ -76,3 +80,10 @@ torchrun \
   --deepspeed "zero_stage1_config.json" \
   --report_to "wandb" \
   2>&1 | tee -a "${OUTPUT_DIR}/training_log.txt"
+
+
+#  --freeze_mlp False \       # unfreeze MLP
+#   --freeze_backbone False \  # enable vision tower training 
+#   --unfreeze_lm_head True \  # LM head training
+#   --use_backbone_lora 256 \  # Trains 'attn.qkv', 'attn.proj', 'mlp.fc1', 'mlp.fc2'
+#   --use_llm_lora 256 \       # Train 'self_attn.q_proj', 'self_attn.k_proj', 'self_attn.v_proj', 'self_attn.o_proj','mlp.gate_proj', 'mlp.down_proj', 'mlp.up_proj'

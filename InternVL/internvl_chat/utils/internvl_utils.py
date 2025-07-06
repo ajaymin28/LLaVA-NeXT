@@ -152,7 +152,7 @@ def load_model(model_path,max_new_tokens=3000,do_sample=False):
     
     # model_config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
     # model_config.use_cache = False
-    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, use_fast=False,local_files_only=True,)
 
     
     model = AutoModel.from_pretrained(
@@ -163,9 +163,10 @@ def load_model(model_path,max_new_tokens=3000,do_sample=False):
         low_cpu_mem_usage=True,
         use_flash_attn=True,
         trust_remote_code=True,
+        local_files_only=True,
         device_map=device_map).eval()
     
-    
+    print(type(model))
     transform = build_transform(input_size=448)
 
     # set the max number of tiles in `max_num`
@@ -175,15 +176,24 @@ def load_model(model_path,max_new_tokens=3000,do_sample=False):
     return model,tokenizer,transform,generation_config
 
 
-def get_model_response(prompt,video_path,frame_indices, model,tokenizer,transforms,generation_config):
+def get_model_response(prompt,video_path,frame_indices, model,tokenizer,transforms,generation_config,cal_perplexity=False, map_fn=None):
     pixel_values, num_patches_list = load_video(video_path,transforms,num_segments=8, max_num=1,frame_indices=frame_indices)
     pixel_values = pixel_values.to(torch.bfloat16).cuda()
     video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
     question = video_prefix + prompt
     # Frame1: <image>\nFrame2: <image>\n...\nFrame8: <image>\n{question}
-    response, history = model.chat(tokenizer, pixel_values, question, generation_config,
+
+    if cal_perplexity:
+        response, history,perplexity,word_map = model.chat(tokenizer, pixel_values, question, generation_config,
+                                num_patches_list=num_patches_list, history=None, return_history=True,
+                                calc_perplexity=True,map_fn=map_fn)
+
+        return response,perplexity,word_map 
+
+    else:
+        response, history = model.chat(tokenizer, pixel_values, question, generation_config,
                                 num_patches_list=num_patches_list, history=None, return_history=True)
-    
+        
     # import pdb
     # pdb.set_trace()
     
