@@ -1,3 +1,7 @@
+## DSGG
+
+Customized MLLMs for generating Dyanmic Scene Graph Generation.
+
 ## Data prep for pvsg, vidvrd and ActionGnome.
 Refer to [Data Prep Readme](./data_prep/README.md)
 
